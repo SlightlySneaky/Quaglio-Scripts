@@ -279,7 +279,7 @@ function initTextAnimations() {
 
   gsap.utils.toArray("[text-body]").forEach((el) => {
     const split = SplitText.create(el, {
-      type: "lines",
+      type: "lines,words",
       mask: "lines",
       linesClass: "text-line",
       autoSplit: true,
@@ -299,7 +299,7 @@ function initTextAnimations() {
 
   gsap.utils.toArray("[text-heading]").forEach((el) => {
     const split = SplitText.create(el, {
-      type: "chars",
+      type: "chars,words",
       mask: "chars",
       charsClass: "text-char",
       autoSplit: true,
