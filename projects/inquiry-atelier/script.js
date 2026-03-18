@@ -325,7 +325,7 @@ function initLineAnimations() {
     ? CustomEase.create("quaglioLine", "M0,0 C0.16,0 0.3,1 1,1")
     : "expo.out";
 
-  const duration = 1.1;
+  const duration = 2;
   const stagger = 0.09;
 
   const widthEls  = gsap.utils.toArray(".line-bot, .line-top");
