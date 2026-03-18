@@ -1,18 +1,43 @@
-// Initialize a new Lenis instance for smooth scrolling
+// LENIS SETUP //
 const lenis = new Lenis();
-
-// Synchronize Lenis scrolling with GSAP's ScrollTrigger plugin
 lenis.on('scroll', ScrollTrigger.update);
-
-// Add Lenis's requestAnimationFrame (raf) method to GSAP's ticker
-// This ensures Lenis's smooth scroll animation updates on each GSAP tick
-gsap.ticker.add((time) => {
-  lenis.raf(time * 1000); // Convert time from seconds to milliseconds
-});
-
-// Disable lag smoothing in GSAP to prevent any delay in scroll animations
+gsap.ticker.add((time) => {lenis.raf(time * 1000);});
 gsap.ticker.lagSmoothing(0);
 
+// IMAGE SCROLL EFFECT //
+gsap.registerPlugin(ScrollTrigger);
+
+gsap.utils.toArray(".img").forEach((img) => {
+  // 1) One-time "reveal" (runs once, no reversing)
+  gsap.fromTo(
+    img,
+    { autoAlpha: 0, scale: 1.05 },
+    {
+      autoAlpha: 1,
+      scale: 1,
+      duration: 0.8,
+      ease: "power2.out",
+      scrollTrigger: {
+        trigger: img,
+        start: "top 80%",
+        toggleActions: "play none none none", // only once
+        once: true
+      }
+    }
+  );
+
+  // 2) Continuous parallax (scrubs both directions)
+  gsap.to(img, {
+    yPercent: 20,
+    ease: "none",
+    scrollTrigger: {
+      trigger: img,
+      start: "top bottom",
+      end: "bottom top",
+      scrub: true
+    }
+  });
+});
 
 function initLineRevealTestimonials() {
   const wraps = document.querySelectorAll("[data-testimonial-wrap]");
@@ -288,7 +313,54 @@ function initLineRevealTestimonials() {
   });
 }
 
+// ============================================
+// Line Draw Animations
+// ============================================
+
+function initLineAnimations() {
+  if (typeof gsap === "undefined" || typeof ScrollTrigger === "undefined") return;
+
+  // Osmo-style ease: fast out, smooth deceleration
+  const ease = typeof CustomEase !== "undefined"
+    ? CustomEase.create("quaglioLine", "M0,0 C0.16,0 0.3,1 1,1")
+    : "expo.out";
+
+  const duration = 1.1;
+  const stagger = 0.09;
+
+  const widthEls  = gsap.utils.toArray(".line-bot, .line-top");
+  const heightEls = gsap.utils.toArray(".line-straight, .line-left, .left-right");
+
+  gsap.set(widthEls,  { width: "0%" });
+  gsap.set(heightEls, { height: "0%" });
+
+  // Animate a group of elements with stagger when first element enters view
+  function bindGroup(els, prop) {
+    if (!els.length) return;
+
+    els.forEach((el, i) => {
+      ScrollTrigger.create({
+        trigger: el,
+        start: "top 90%",
+        once: true,
+        onEnter() {
+          gsap.to(el, {
+            [prop]: "100%",
+            duration,
+            ease,
+            delay: i * stagger,
+          });
+        },
+      });
+    });
+  }
+
+  bindGroup(widthEls,  "width");
+  bindGroup(heightEls, "height");
+}
+
 // Initialize Line Reveal Testimonials
 document.addEventListener("DOMContentLoaded", () => {
   initLineRevealTestimonials();
+  initLineAnimations();
 });
