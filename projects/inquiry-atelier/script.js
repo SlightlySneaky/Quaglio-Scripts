@@ -1,43 +1,62 @@
-// LENIS SETUP //
-const lenis = new Lenis();
-lenis.on('scroll', ScrollTrigger.update);
-gsap.ticker.add((time) => {lenis.raf(time * 1000);});
-gsap.ticker.lagSmoothing(0);
+// ============================================
+// Shared ease (used across all animations)
+// ============================================
 
-// IMAGE SCROLL EFFECT //
-gsap.registerPlugin(ScrollTrigger);
+function createEase(name) {
+  return typeof CustomEase !== "undefined"
+    ? CustomEase.create(name, "M0,0 C0.16,0 0.3,1 1,1")
+    : "expo.out";
+}
 
-gsap.utils.toArray(".img").forEach((img) => {
-  // 1) One-time "reveal" (runs once, no reversing)
-  gsap.fromTo(
-    img,
-    { autoAlpha: 0, scale: 1.05 },
-    {
-      autoAlpha: 1,
-      scale: 1,
-      duration: 0.8,
-      ease: "power2.out",
+// ============================================
+// Lenis smooth scroll
+// ============================================
+
+function initLenis() {
+  const lenis = new Lenis();
+  lenis.on("scroll", ScrollTrigger.update);
+  gsap.ticker.add((time) => { lenis.raf(time * 1000); });
+  gsap.ticker.lagSmoothing(0);
+}
+
+// ============================================
+// Image reveal + parallax (.img)
+// ============================================
+
+function initImageAnimations() {
+  gsap.utils.toArray(".img").forEach((img) => {
+    gsap.fromTo(
+      img,
+      { autoAlpha: 0, scale: 1.05 },
+      {
+        autoAlpha: 1,
+        scale: 1,
+        duration: 0.8,
+        ease: "power2.out",
+        scrollTrigger: {
+          trigger: img,
+          start: "top 80%",
+          once: true,
+        },
+      }
+    );
+
+    gsap.to(img, {
+      yPercent: 20,
+      ease: "none",
       scrollTrigger: {
         trigger: img,
-        start: "top 80%",
-        toggleActions: "play none none none", // only once
-        once: true
-      }
-    }
-  );
-
-  // 2) Continuous parallax (scrubs both directions)
-  gsap.to(img, {
-    yPercent: 20,
-    ease: "none",
-    scrollTrigger: {
-      trigger: img,
-      start: "top bottom",
-      end: "bottom top",
-      scrub: true
-    }
+        start: "top bottom",
+        end: "bottom top",
+        scrub: true,
+      },
+    });
   });
-});
+}
+
+// ============================================
+// Testimonial slider ([data-testimonial-wrap])
+// ============================================
 
 function initLineRevealTestimonials() {
   const wraps = document.querySelectorAll("[data-testimonial-wrap]");
@@ -62,28 +81,24 @@ function initLineRevealTestimonials() {
 
     let isAnimating = false;
     let reduceMotion = false;
-    
+
     const autoplayEnabled = wrap.getAttribute("data-autoplay") === "true";
     const autoplayDuration = parseInt(wrap.getAttribute("data-autoplay-duration"), 10) || 4000;
-    
+
     let autoplayCall = null;
     let isInView = true;
 
     const slides = items.map((item) => ({
       item,
       image: item.querySelector("[data-testimonial-img]"),
-      
       splitTargets: [
         item.querySelector("[data-testimonial-text]"),
         ...item.querySelectorAll("[data-testimonial-split]"),
       ].filter(Boolean),
-      
       splitInstances: [],
-      
       getLines() {
         return this.splitInstances.flatMap((instance) => instance.lines);
       },
-      
     }));
 
     function setSlideState(slideIndex, isActive) {
@@ -99,49 +114,40 @@ function initLineRevealTestimonials() {
     function updateCounter() {
       if (elCurrent) elCurrent.textContent = String(activeIndex + 1);
     }
-    
+
     function startAutoplay() {
       if (!autoplayEnabled) return;
       if (autoplayCall) autoplayCall.kill();
-    
       autoplayCall = gsap.delayedCall(autoplayDuration / 1000, () => {
-        if (!isInView || isAnimating) {
-          startAutoplay();
-          return;
-        }
+        if (!isInView || isAnimating) { startAutoplay(); return; }
         goTo((activeIndex + 1) % slides.length);
         startAutoplay();
       });
     }
-    
+
     function pauseAutoplay() {
       if (autoplayCall) autoplayCall.pause();
     }
-    
+
     function resumeAutoplay() {
       if (!autoplayEnabled) return;
       if (!autoplayCall) startAutoplay();
       else autoplayCall.resume();
     }
-    
+
     function resetAutoplay() {
       if (!autoplayEnabled) return;
       startAutoplay();
     }
 
-    // Set initial state
     slides.forEach((_, i) => setSlideState(i, i === activeIndex));
     updateCounter();
 
-    // Handle reduced motion preference
     gsap.matchMedia().add(
       { reduce: "(prefers-reduced-motion: reduce)" },
-      (context) => {
-        reduceMotion = context.conditions.reduce;
-      }
+      (context) => { reduceMotion = context.conditions.reduce; }
     );
 
-    // Create SplitText instances
     slides.forEach((slide, slideIndex) => {
       slide.splitInstances = slide.splitTargets.map((el) =>
         SplitText.create(el, {
@@ -151,10 +157,8 @@ function initLineRevealTestimonials() {
           autoSplit: true,
           onSplit(self) {
             if (reduceMotion) return;
-
             const isActive = slideIndex === activeIndex;
             gsap.set(self.lines, { yPercent: isActive ? 0 : 110 });
-
             if (slide.image) {
               gsap.set(slide.image, {
                 clipPath: isActive ? "circle(50% at 50% 50%)" : "circle(0% at 50% 50%)",
@@ -183,19 +187,8 @@ function initLineRevealTestimonials() {
       });
 
       if (reduceMotion) {
-        tl.to(outgoingSlide.item, { 
-            autoAlpha: 0,
-            duration: 0.4,
-            ease: "power2"
-          }, 0)
-          .fromTo(incomingSlide.item, {
-            autoAlpha: 0
-          }, {
-            autoAlpha: 1,
-            duration: 0.4,
-            ease: "power2"
-          }, 0);
-          
+        tl.to(outgoingSlide.item, { autoAlpha: 0, duration: 0.4, ease: "power2" }, 0)
+          .fromTo(incomingSlide.item, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4, ease: "power2" }, 0);
         return;
       }
 
@@ -204,127 +197,53 @@ function initLineRevealTestimonials() {
 
       gsap.set(incomingSlide.item, { autoAlpha: 1, pointerEvents: "auto" });
       gsap.set(incomingLines, { yPercent: 110 });
-  
       if (incomingSlide.image) gsap.set(incomingSlide.image, { clipPath: "circle(0% at 50% 50%)" });
       if (outgoingSlide.image) gsap.set(outgoingSlide.image, { clipPath: "circle(50% at 50% 50%)" });
 
-      tl.to(outgoingLines, {
-        yPercent: -110,
-        duration: 0.6,
-        ease: "power4.inOut",
-        stagger: { amount: 0.25 },
-      }, 0);
-
+      tl.to(outgoingLines, { yPercent: -110, duration: 0.6, ease: "power4.inOut", stagger: { amount: 0.25 } }, 0);
       if (outgoingSlide.image) {
-        tl.to(outgoingSlide.image, {
-          clipPath: "circle(0% at 50% 50%)",
-          duration: 0.6,
-          ease: "power4.inOut",
-        }, 0);
+        tl.to(outgoingSlide.image, { clipPath: "circle(0% at 50% 50%)", duration: 0.6, ease: "power4.inOut" }, 0);
       }
-
-      tl.to(incomingLines, {
-        yPercent: 0,
-        duration: 0.7,
-        ease: "power4.inOut",
-        stagger: { amount: 0.4 },
-      }, ">-=0.3");
-
+      tl.to(incomingLines, { yPercent: 0, duration: 0.7, ease: "power4.inOut", stagger: { amount: 0.4 } }, ">-=0.3");
       if (incomingSlide.image) {
-        tl.to(incomingSlide.image, {
-          clipPath: "circle(50% at 50% 50%)",
-          duration: 0.75,
-          ease: "power4.inOut",
-        }, "<");
+        tl.to(incomingSlide.image, { clipPath: "circle(50% at 50% 50%)", duration: 0.75, ease: "power4.inOut" }, "<");
       }
-
       tl.set(outgoingSlide.item, { autoAlpha: 0 }, ">");
     }
-  
-    // Start autoplay on the wrap (only works if autoplay is set to 'true')
+
     startAutoplay();
 
-    if (btnNext) {
-      btnNext.addEventListener("click", () => {
-        resetAutoplay();
-        goTo((activeIndex + 1) % slides.length);
-      });
-    }
-    
-    if (btnPrev) {
-      btnPrev.addEventListener("click", () => {
-        resetAutoplay();
-        goTo((activeIndex - 1 + slides.length) % slides.length);
-      });
-    }
-        
+    if (btnNext) btnNext.addEventListener("click", () => { resetAutoplay(); goTo((activeIndex + 1) % slides.length); });
+    if (btnPrev) btnPrev.addEventListener("click", () => { resetAutoplay(); goTo((activeIndex - 1 + slides.length) % slides.length); });
+
     function onKeyDown(e) {
       if (!isInView) return;
-    
-      // Don't hijack arrow keys while user is typing.
       const t = e.target;
-      const isTypingTarget =
-        t &&
-        (t.tagName === "INPUT" ||
-          t.tagName === "TEXTAREA" ||
-          t.isContentEditable);
-    
-      if (isTypingTarget) return;
-    
-      if (e.key === "ArrowRight") {
-        e.preventDefault();
-        resetAutoplay();
-        goTo((activeIndex + 1) % slides.length);
-      }
-    
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        resetAutoplay();
-        goTo((activeIndex - 1 + slides.length) % slides.length);
-      }
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); resetAutoplay(); goTo((activeIndex + 1) % slides.length); }
+      if (e.key === "ArrowLeft")  { e.preventDefault(); resetAutoplay(); goTo((activeIndex - 1 + slides.length) % slides.length); }
     }
-    
-    // Listen for left/right arrows
+
     window.addEventListener("keydown", onKeyDown);
-    
-    // Enable/disable keyboard + autoplay depending on scroll position
+
     ScrollTrigger.create({
       trigger: wrap,
       start: "top bottom",
       end: "bottom top",
-      onEnter: () => {
-        isInView = true;
-        resumeAutoplay();
-      },
-      onEnterBack: () => {
-        isInView = true;
-        resumeAutoplay();
-      },
-      onLeave: () => {
-        isInView = false;
-        pauseAutoplay();
-      },
-      onLeaveBack: () => {
-        isInView = false;
-        pauseAutoplay();
-      },
+      onEnter:      () => { isInView = true;  resumeAutoplay(); },
+      onEnterBack:  () => { isInView = true;  resumeAutoplay(); },
+      onLeave:      () => { isInView = false; pauseAutoplay(); },
+      onLeaveBack:  () => { isInView = false; pauseAutoplay(); },
     });
-    
   });
 }
 
 // ============================================
-// Line Draw Animations
+// Line draw animations (.line-bot .line-top etc)
 // ============================================
 
 function initLineAnimations() {
-  if (typeof gsap === "undefined" || typeof ScrollTrigger === "undefined") return;
-
-  // Osmo-style ease: fast out, smooth deceleration
-  const ease = typeof CustomEase !== "undefined"
-    ? CustomEase.create("quaglioLine", "M0,0 C0.16,0 0.3,1 1,1")
-    : "expo.out";
-
+  const ease = createEase("quaglioLine");
   const duration = 2;
   const stagger = 0.09;
 
@@ -334,22 +253,14 @@ function initLineAnimations() {
   gsap.set(widthEls,  { width: "0%" });
   gsap.set(heightEls, { height: "0%" });
 
-  // Animate a group of elements with stagger when first element enters view
   function bindGroup(els, prop) {
-    if (!els.length) return;
-
     els.forEach((el, i) => {
       ScrollTrigger.create({
         trigger: el,
         start: "top 90%",
         once: true,
         onEnter() {
-          gsap.to(el, {
-            [prop]: "100%",
-            duration,
-            ease,
-            delay: i * stagger,
-          });
+          gsap.to(el, { [prop]: "100%", duration, ease, delay: i * stagger });
         },
       });
     });
@@ -360,17 +271,12 @@ function initLineAnimations() {
 }
 
 // ============================================
-// Text Animations
+// Text animations ([text-body] [text-heading])
 // ============================================
 
 function initTextAnimations() {
-  if (typeof gsap === "undefined" || typeof ScrollTrigger === "undefined" || typeof SplitText === "undefined") return;
+  const ease = createEase("quaglioText");
 
-  const ease = typeof CustomEase !== "undefined"
-    ? CustomEase.create("quaglioText", "M0,0 C0.16,0 0.3,1 1,1")
-    : "expo.out";
-
-  // --- [text-body]: split by lines, slight angle, staggered ---
   gsap.utils.toArray("[text-body]").forEach((el) => {
     const split = SplitText.create(el, {
       type: "lines",
@@ -386,18 +292,11 @@ function initTextAnimations() {
       start: "top 88%",
       once: true,
       onEnter() {
-        gsap.to(split.lines, {
-          yPercent: 0,
-          rotation: 0,
-          duration: 1.0,
-          ease,
-          stagger: 0.07,
-        });
+        gsap.to(split.lines, { yPercent: 0, rotation: 0, duration: 1.0, ease, stagger: 0.07 });
       },
     });
   });
 
-  // --- [text-heading]: split by chars, masked, staggered ---
   gsap.utils.toArray("[text-heading]").forEach((el) => {
     const split = SplitText.create(el, {
       type: "chars",
@@ -413,20 +312,30 @@ function initTextAnimations() {
       start: "top 88%",
       once: true,
       onEnter() {
-        gsap.to(split.chars, {
-          yPercent: 0,
-          duration: 0.9,
-          ease,
-          stagger: 0.03,
-        });
+        gsap.to(split.chars, { yPercent: 0, duration: 0.9, ease, stagger: 0.03 });
       },
     });
   });
 }
 
-// Initialize Line Reveal Testimonials
+// ============================================
+// Init — only runs each module if elements exist
+// ============================================
+
 document.addEventListener("DOMContentLoaded", () => {
-  initLineRevealTestimonials();
-  initLineAnimations();
-  initTextAnimations();
+  gsap.registerPlugin(ScrollTrigger);
+
+  if (typeof Lenis !== "undefined") initLenis();
+
+  if (document.querySelector(".img"))
+    initImageAnimations();
+
+  if (document.querySelector("[data-testimonial-wrap]"))
+    initLineRevealTestimonials();
+
+  if (document.querySelector(".line-bot, .line-top, .line-straight, .line-left, .left-right"))
+    initLineAnimations();
+
+  if (typeof SplitText !== "undefined" && document.querySelector("[text-body], [text-heading]"))
+    initTextAnimations();
 });
