@@ -359,8 +359,74 @@ function initLineAnimations() {
   bindGroup(heightEls, "height");
 }
 
+// ============================================
+// Text Animations
+// ============================================
+
+function initTextAnimations() {
+  if (typeof gsap === "undefined" || typeof ScrollTrigger === "undefined" || typeof SplitText === "undefined") return;
+
+  const ease = typeof CustomEase !== "undefined"
+    ? CustomEase.create("quaglioText", "M0,0 C0.16,0 0.3,1 1,1")
+    : "expo.out";
+
+  // --- [text-body]: split by lines, slight angle, staggered ---
+  gsap.utils.toArray("[text-body]").forEach((el) => {
+    const split = SplitText.create(el, {
+      type: "lines",
+      mask: "lines",
+      linesClass: "text-line",
+      autoSplit: true,
+    });
+
+    gsap.set(split.lines, { yPercent: 108, rotation: 2, transformOrigin: "left bottom" });
+
+    ScrollTrigger.create({
+      trigger: el,
+      start: "top 88%",
+      once: true,
+      onEnter() {
+        gsap.to(split.lines, {
+          yPercent: 0,
+          rotation: 0,
+          duration: 1.0,
+          ease,
+          stagger: 0.07,
+        });
+      },
+    });
+  });
+
+  // --- [text-heading]: split by chars, masked, staggered ---
+  gsap.utils.toArray("[text-heading]").forEach((el) => {
+    const split = SplitText.create(el, {
+      type: "chars",
+      mask: "chars",
+      charsClass: "text-char",
+      autoSplit: true,
+    });
+
+    gsap.set(split.chars, { yPercent: 110 });
+
+    ScrollTrigger.create({
+      trigger: el,
+      start: "top 88%",
+      once: true,
+      onEnter() {
+        gsap.to(split.chars, {
+          yPercent: 0,
+          duration: 0.9,
+          ease,
+          stagger: 0.03,
+        });
+      },
+    });
+  });
+}
+
 // Initialize Line Reveal Testimonials
 document.addEventListener("DOMContentLoaded", () => {
   initLineRevealTestimonials();
   initLineAnimations();
+  initTextAnimations();
 });
