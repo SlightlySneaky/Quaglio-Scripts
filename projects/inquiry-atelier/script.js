@@ -1,5 +1,27 @@
 // ============================================
-// Shared ease (used across all animations)
+// Init — only runs each module if elements exist
+// ============================================
+
+document.addEventListener("DOMContentLoaded", () => {
+  gsap.registerPlugin(ScrollTrigger);
+
+  if (typeof Lenis !== "undefined") initLenis();
+
+  if (document.querySelector(".img"))
+    initImageAnimations();
+
+  if (document.querySelector("[data-testimonial-wrap]"))
+    initLineRevealTestimonials();
+
+  if (document.querySelector(".line-bot, .line-top, .line-straight, .line-left, .left-right"))
+    initLineAnimations();
+
+  if (typeof SplitText !== "undefined" && document.querySelector("[text-body], [text-heading]"))
+    initTextAnimations();
+});
+
+// ============================================
+// Shared
 // ============================================
 
 function createEase(name) {
@@ -317,25 +339,3 @@ function initTextAnimations() {
     });
   });
 }
-
-// ============================================
-// Init — only runs each module if elements exist
-// ============================================
-
-document.addEventListener("DOMContentLoaded", () => {
-  gsap.registerPlugin(ScrollTrigger);
-
-  if (typeof Lenis !== "undefined") initLenis();
-
-  if (document.querySelector(".img"))
-    initImageAnimations();
-
-  if (document.querySelector("[data-testimonial-wrap]"))
-    initLineRevealTestimonials();
-
-  if (document.querySelector(".line-bot, .line-top, .line-straight, .line-left, .left-right"))
-    initLineAnimations();
-
-  if (typeof SplitText !== "undefined" && document.querySelector("[text-body], [text-heading]"))
-    initTextAnimations();
-});
