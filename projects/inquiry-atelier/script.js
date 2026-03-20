@@ -424,3 +424,36 @@ function initAnimatedGrid() {
 document.addEventListener("DOMContentLoaded", () => {
   initAnimatedGrid();
 });
+
+// Superform 
+const panel = document.querySelector('.hero_from-container');
+const overlay = document.getElementById('formOverlay');
+
+// Replace '.contact-btn' with whatever selector your contact button has
+const openBtns = document.querySelectorAll('.contact-btn');
+
+openBtns.forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    panel.classList.add('is-open');
+    overlay.classList.add('is-open');
+    document.body.style.overflow = 'hidden'; // prevent background scroll
+  });
+});
+
+// Close on overlay click
+overlay.addEventListener('click', () => {
+  panel.classList.remove('is-open');
+  overlay.classList.remove('is-open');
+  document.body.style.overflow = '';
+});
+
+// Optional: close button inside the form
+const closeBtn = document.querySelector('.form-close-btn');
+if (closeBtn) {
+  closeBtn.addEventListener('click', () => {
+    panel.classList.remove('is-open');
+    overlay.classList.remove('is-open');
+    document.body.style.overflow = '';
+  });
+}
