@@ -11,31 +11,29 @@
 }
 
 /* Add your component styles below */
-/* Overlay background */
-.form-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 999;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease;
-}
+/* Overlay background */.form-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
 
-.form-overlay.is-open {
-  opacity: 1;
-  pointer-events: all;
-}
+  .form-overlay.is-open {
+    opacity: 1;
+    pointer-events: all;
+  }
 
-/* Slide-in panel */
-.form-container {
-  width: 480px;
-  max-width: 100vw;
-  overflow-y: auto;
-  transform: translateX(100%);
-  transition: transform 0.45s cubic-bezier(0.77, 0, 0.18, 1);
-}
+  .form-container {
+    width: 480px;
+    max-width: 100vw;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.45s cubic-bezier(0.77, 0, 0.18, 1);
+  }
 
-.form-container.is-open {
-  transform: translateX(0);
-}
+  .form-container.is-open {
+    transform: translateX(0);
+  }
