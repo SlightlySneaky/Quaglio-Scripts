@@ -1,3 +1,10 @@
+// Hide text targets immediately to prevent flash before GSAP sets initial state
+(function () {
+  const s = document.createElement("style");
+  s.textContent = "[text-body],[text-heading]{visibility:hidden}";
+  document.head.appendChild(s);
+})();
+
 // ============================================
 // Init — only runs each module if elements exist
 // ============================================
@@ -308,6 +315,7 @@ function initTextAnimations() {
     });
 
     gsap.set(split.lines, { yPercent: 108, rotation: 2, transformOrigin: "left bottom" });
+    el.style.visibility = "";
 
     ScrollTrigger.create({
       trigger: el,
@@ -328,6 +336,7 @@ function initTextAnimations() {
     });
 
     gsap.set(split.chars, { yPercent: 110 });
+    el.style.visibility = "";
 
     ScrollTrigger.create({
       trigger: el,
