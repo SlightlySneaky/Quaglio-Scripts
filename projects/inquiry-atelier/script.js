@@ -25,6 +25,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (typeof SplitText !== "undefined" && document.querySelector("[text-body], [text-heading]"))
     initTextAnimations();
+
+  if (document.querySelector("[data-animated-grid]"))
+    initAnimatedGrid();
+
+  if (document.querySelector("[form-open]"))
+    initFormModal();
 });
 
 // ============================================
@@ -350,9 +356,8 @@ function initTextAnimations() {
 }
 
 // ============================================
-// Grid animation
+// Grid animation ([data-animated-grid])
 // ============================================
-
 
 function initAnimatedGrid() {
   const grid = document.querySelector("[data-animated-grid]");
@@ -375,31 +380,13 @@ function initAnimatedGrid() {
   function openGrid() {
     isOpen = true;
     localStorage.setItem(storageKey, "open");
-
-    gsap.fromTo(cols, {
-      yPercent: 100,
-    }, {
-      yPercent: 0,
-      duration: 1,
-      ease: "expo.inOut",
-      stagger: { each: 0.03, from: "start" },
-      overwrite: true
-    });
+    gsap.fromTo(cols, { yPercent: 100 }, { yPercent: 0, duration: 1, ease: "expo.inOut", stagger: { each: 0.03, from: "start" }, overwrite: true });
   }
 
   function closeGrid() {
     isOpen = false;
     localStorage.setItem(storageKey, "closed");
-
-    gsap.fromTo(cols, {
-      yPercent: 0,
-    }, {
-      yPercent: -100,
-      duration: 1,
-      ease: "expo.inOut",
-      stagger: { each: 0.03, from: "start" },
-      overwrite: true
-    });
+    gsap.fromTo(cols, { yPercent: 0 }, { yPercent: -100, duration: 1, ease: "expo.inOut", stagger: { each: 0.03, from: "start" }, overwrite: true });
   }
 
   function toggleGrid() {
@@ -415,10 +402,7 @@ function initAnimatedGrid() {
   }
 
   toggles.forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      toggleGrid();
-    });
+    btn.addEventListener("click", (e) => { e.preventDefault(); toggleGrid(); });
   });
 
   window.addEventListener("keydown", (e) => {
@@ -429,34 +413,38 @@ function initAnimatedGrid() {
   });
 }
 
-// Initialize Animated Grid Overlay (Columns)
-document.addEventListener("DOMContentLoaded", () => {
-  initAnimatedGrid();
-});
+// ============================================
+// Form modal ([form-open] / [form-wrap])
+// ============================================
 
-// Superform 
-const panel = document.querySelector('.form-container');
-const overlay = document.getElementById('formOverlay');
+function initFormModal() {
+  const openers = document.querySelectorAll("[form-open]");
+  const wrap    = document.querySelector("[form-wrap]");
+  if (!wrap) return;
 
-// Open on "Get in Touch" click
-document.querySelectorAll('.contact-btn').forEach(btn => {
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    panel.classList.add('is-open');
-    overlay.classList.add('is-open');
-    document.body.style.overflow = 'hidden';
-  });
-});
+  const inner = wrap.querySelector("[form-inner]");
+  const bg    = wrap.querySelector("[form-bg]");
+  if (!inner || !bg) return;
 
-// Close on overlay click
-overlay.addEventListener('click', closePanel);
+  gsap.set(wrap,  { display: "none" });
+  gsap.set(bg,    { autoAlpha: 0 });
+  gsap.set(inner, { x: "100%" });
 
-// Close on close button click
-const closeBtn = document.querySelector('.form-close-btn');
-if (closeBtn) closeBtn.addEventListener('click', closePanel);
+  function openForm() {
+    gsap.set(wrap, { display: "flex" });
+    const tl = gsap.timeline();
+    tl.to(bg, { autoAlpha: 1, duration: 0.5, ease: "power2.out" }, 0)
+      .to(inner, { x: "0%", duration: 0.65, ease: "power3.out" }, "-=0.15");
+  }
 
-function closePanel() {
-  panel.classList.remove('is-open');
-  overlay.classList.remove('is-open');
-  document.body.style.overflow = '';
+  function closeForm() {
+    const tl = gsap.timeline({
+      onComplete: () => gsap.set(wrap, { display: "none" }),
+    });
+    tl.to(inner, { x: "100%", duration: 0.5, ease: "power3.in" }, 0)
+      .to(bg, { autoAlpha: 0, duration: 0.4, ease: "power2.in" }, 0.1);
+  }
+
+  openers.forEach((el) => el.addEventListener("click", openForm));
+  bg.addEventListener("click", closeForm);
 }
