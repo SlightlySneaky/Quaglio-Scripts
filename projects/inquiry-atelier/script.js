@@ -10,27 +10,66 @@
 // ============================================
 
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("✅ Inquiry Atelier script connected");
+
   gsap.registerPlugin(ScrollTrigger);
 
-  if (typeof Lenis !== "undefined") initLenis();
+  // Lenis
+  if (typeof Lenis !== "undefined") {
+    initLenis();
+    console.log("✅ Lenis: init");
+  } else {
+    console.warn("⚠️ Lenis: not found (script not loaded?)");
+  }
 
-  if (document.querySelector(".img"))
+  // Images
+  if (document.querySelector(".img")) {
     initImageAnimations();
+    console.log("✅ Image animations: init");
+  } else {
+    console.log("— Image animations: no .img elements found, skipped");
+  }
 
-  if (document.querySelector("[data-testimonial-wrap]"))
+  // Testimonials
+  if (document.querySelector("[data-testimonial-wrap]")) {
     initLineRevealTestimonials();
+    console.log("✅ Testimonials: init");
+  } else {
+    console.log("— Testimonials: no [data-testimonial-wrap] found, skipped");
+  }
 
-  if (document.querySelector(".line-bot, .line-top, .line-straight, .line-left, .left-right"))
+  // Lines
+  if (document.querySelector(".line-bot, .line-top, .line-straight, .line-left, .left-right")) {
     initLineAnimations();
+    console.log("✅ Line animations: init");
+  } else {
+    console.log("— Line animations: no line elements found, skipped");
+  }
 
-  if (typeof SplitText !== "undefined" && document.querySelector("[text-body], [text-heading]"))
+  // Text
+  if (typeof SplitText !== "undefined" && document.querySelector("[text-body], [text-heading]")) {
     initTextAnimations();
+    console.log("✅ Text animations: init");
+  } else {
+    if (typeof SplitText === "undefined") console.warn("⚠️ Text animations: SplitText not loaded");
+    else console.log("— Text animations: no [text-body] or [text-heading] found, skipped");
+  }
 
-  if (document.querySelector("[data-animated-grid]"))
+  // Animated grid
+  if (document.querySelector("[data-animated-grid]")) {
     initAnimatedGrid();
+    console.log("✅ Animated grid: init");
+  } else {
+    console.log("— Animated grid: no [data-animated-grid] found, skipped");
+  }
 
-  if (document.querySelector("[form-open]"))
+  // Form modal
+  if (document.querySelector("[form-open]")) {
     initFormModal();
+    console.log("✅ Form modal: init");
+  } else {
+    console.warn("⚠️ Form modal: no [form-open] element found — check your HTML attributes");
+  }
 });
 
 // ============================================
@@ -424,7 +463,8 @@ function initFormModal() {
 
   const inner = wrap.querySelector("[form-inner]");
   const bg    = wrap.querySelector("[form-bg]");
-  if (!inner || !bg) return;
+  if (!inner) { console.error("❌ Form modal: [form-inner] not found inside [form-wrap]"); return; }
+  if (!bg)    { console.error("❌ Form modal: [form-bg] not found inside [form-wrap]"); return; }
 
   gsap.set(wrap,  { display: "none" });
   gsap.set(bg,    { autoAlpha: 0 });
