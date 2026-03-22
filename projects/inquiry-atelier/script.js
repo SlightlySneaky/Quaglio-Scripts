@@ -9,66 +9,39 @@
 // Init — only runs each module if elements exist
 // ============================================
 
+function tryInit(name, condition, fn) {
+  if (!condition) {
+    console.log(`— ${name}: skipped (no elements found)`);
+    return;
+  }
+  try {
+    fn();
+    console.log(`✅ ${name}: init`);
+  } catch (e) {
+    console.error(`❌ ${name}: error —`, e);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   console.log("✅ Inquiry Atelier script connected");
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // Lenis
-  if (typeof Lenis !== "undefined") {
-    initLenis();
-    console.log("✅ Lenis: init");
-  } else {
+  if (typeof Lenis === "undefined") {
     console.warn("⚠️ Lenis: not found (script not loaded?)");
+  } else {
+    tryInit("Lenis", true, initLenis);
   }
 
-  // Images
-  if (document.querySelector(".img")) {
-    initImageAnimations();
-    console.log("✅ Image animations: init");
-  } else {
-    console.log("— Image animations: no .img elements found, skipped");
-  }
+  tryInit("Image animations",  document.querySelector(".img"),                                                                               initImageAnimations);
+  tryInit("Testimonials",      document.querySelector("[data-testimonial-wrap]"),                                                            initLineRevealTestimonials);
+  tryInit("Line animations",   document.querySelector(".line-bot, .line-top, .line-straight, .line-left, .left-right"),                      initLineAnimations);
+  tryInit("Text animations",   typeof SplitText !== "undefined" && document.querySelector("[text-body], [text-heading]"),                    initTextAnimations);
+  tryInit("Animated grid",     document.querySelector("[data-animated-grid]"),                                                               initAnimatedGrid);
+  tryInit("Form modal",        document.querySelector("[form-open]"),                                                                        initFormModal);
 
-  // Testimonials
-  if (document.querySelector("[data-testimonial-wrap]")) {
-    initLineRevealTestimonials();
-    console.log("✅ Testimonials: init");
-  } else {
-    console.log("— Testimonials: no [data-testimonial-wrap] found, skipped");
-  }
-
-  // Lines
-  if (document.querySelector(".line-bot, .line-top, .line-straight, .line-left, .left-right")) {
-    initLineAnimations();
-    console.log("✅ Line animations: init");
-  } else {
-    console.log("— Line animations: no line elements found, skipped");
-  }
-
-  // Text
-  if (typeof SplitText !== "undefined" && document.querySelector("[text-body], [text-heading]")) {
-    initTextAnimations();
-    console.log("✅ Text animations: init");
-  } else {
-    if (typeof SplitText === "undefined") console.warn("⚠️ Text animations: SplitText not loaded");
-    else console.log("— Text animations: no [text-body] or [text-heading] found, skipped");
-  }
-
-  // Animated grid
-  if (document.querySelector("[data-animated-grid]")) {
-    initAnimatedGrid();
-    console.log("✅ Animated grid: init");
-  } else {
-    console.log("— Animated grid: no [data-animated-grid] found, skipped");
-  }
-
-  // Form modal
-  if (document.querySelector("[form-open]")) {
-    initFormModal();
-    console.log("✅ Form modal: init");
-  } else {
-    console.warn("⚠️ Form modal: no [form-open] element found — check your HTML attributes");
+  if (typeof SplitText === "undefined" && document.querySelector("[text-body], [text-heading]")) {
+    console.warn("⚠️ Text animations: SplitText not loaded");
   }
 });
 
