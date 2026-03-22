@@ -333,7 +333,7 @@ function initTextAnimations() {
     });
 
     gsap.set(split.lines, { yPercent: 108, rotation: 2, transformOrigin: "left bottom" });
-    el.style.visibility = "";
+    el.style.visibility = "visible";
 
     ScrollTrigger.create({
       trigger: el,
@@ -354,7 +354,7 @@ function initTextAnimations() {
     });
 
     gsap.set(split.chars, { yPercent: 110 });
-    el.style.visibility = "";
+    el.style.visibility = "visible";
 
     ScrollTrigger.create({
       trigger: el,
