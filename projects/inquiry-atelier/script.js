@@ -439,11 +439,14 @@ function initFormModal() {
   if (!inner) { console.error("❌ Form modal: [form-inner] not found inside [form-wrap]"); return; }
   if (!bg)    { console.error("❌ Form modal: [form-bg] not found inside [form-wrap]"); return; }
 
+  console.log(`Form modal elements found — openers: ${openers.length}, wrap:`, wrap, "inner:", inner, "bg:", bg);
+
   gsap.set(wrap,  { display: "none" });
   gsap.set(bg,    { autoAlpha: 0 });
   gsap.set(inner, { x: "100%" });
 
   function openForm() {
+    console.log("Form modal: open triggered");
     gsap.set(wrap, { display: "flex" });
     const tl = gsap.timeline();
     tl.to(bg, { autoAlpha: 1, duration: 0.5, ease: "power2.out" }, 0)
