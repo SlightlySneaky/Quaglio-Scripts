@@ -8,7 +8,6 @@ function domReady(fn) {
     document.addEventListener("DOMContentLoaded", fn);
   }
 }
-
 // ─── REGISTER ALL GSAP PLUGINS ONCE ─────────────────────────────────────────
 gsap.registerPlugin(ScrollTrigger, CustomEase, SplitText, Draggable);
 
