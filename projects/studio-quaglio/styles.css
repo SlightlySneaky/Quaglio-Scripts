@@ -1,0 +1,13 @@
+/* ============================================
+   Template Styles — Quaglio Scripts
+   Deploy via Vercel CDN → use in Webflow
+   ============================================ */
+
+:root {
+  --color-primary: #000000;
+  --color-secondary: #ffffff;
+  --font-base: 'Inter', sans-serif;
+  --spacing-base: 16px;
+}
+
+/* Add your component styles below */
