@@ -743,9 +743,3 @@ function initBunnyPlayer() {
     });
   }
 }
-
-
-// Initialize Bunny HTML HLS Player (Advanced)
-document.addEventListener('DOMContentLoaded', function() {
-  initBunnyPlayer();
-});
