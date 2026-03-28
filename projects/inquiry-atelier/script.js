@@ -471,11 +471,11 @@ function initFormModal() {
       wrap
         .querySelectorAll(`input[type="radio"][name="${radio.name}"]`)
         .forEach((r) => {
-          const label = r.closest("label");
-          if (label) label.querySelector("span")?.style.setProperty("color", "");
+          const text = r.closest("label")?.querySelector(".radio_button_element")?.nextElementSibling;
+          if (text) text.style.color = "";
         });
-      const label = radio.closest("label");
-      if (label) label.querySelector("span")?.style.setProperty("color", "white");
+      const text = radio.closest("label")?.querySelector(".radio_button_element")?.nextElementSibling;
+      if (text) text.style.color = "white";
     });
   });
 }
