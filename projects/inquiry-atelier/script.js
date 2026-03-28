@@ -441,13 +441,13 @@ function initFormModal() {
 
   console.log(`Form modal elements found — openers: ${openers.length}, wrap:`, wrap, "inner:", inner, "bg:", bg);
 
-  gsap.set(wrap,  { display: "none" });
+  gsap.set(wrap,  { autoAlpha: 0, pointerEvents: "none" });
   gsap.set(bg,    { autoAlpha: 0 });
   gsap.set(inner, { x: "100%" });
 
   function openForm() {
     console.log("Form modal: open triggered");
-    gsap.set(wrap, { display: "flex" });
+    gsap.set(wrap, { autoAlpha: 1, pointerEvents: "auto" });
     const tl = gsap.timeline();
     tl.to(bg, { autoAlpha: 1, duration: 0.5, ease: "power2.out" }, 0)
       .to(inner, { x: "0%", duration: 0.65, ease: "power3.out" }, "-=0.15");
@@ -455,7 +455,7 @@ function initFormModal() {
 
   function closeForm() {
     const tl = gsap.timeline({
-      onComplete: () => gsap.set(wrap, { display: "none" }),
+      onComplete: () => gsap.set(wrap, { autoAlpha: 0, pointerEvents: "none" }),
     });
     tl.to(inner, { x: "100%", duration: 0.5, ease: "power3.in" }, 0)
       .to(bg, { autoAlpha: 0, duration: 0.4, ease: "power2.in" }, 0.1);
