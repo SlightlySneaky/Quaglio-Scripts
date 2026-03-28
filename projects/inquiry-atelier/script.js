@@ -434,8 +434,9 @@ function initFormModal() {
   const wrap    = document.querySelector("[form-wrap]");
   if (!wrap) return;
 
-  const inner = wrap.querySelector("[form-inner]");
-  const bg    = wrap.querySelector("[form-bg]");
+  const inner   = wrap.querySelector("[form-inner]");
+  const bg      = wrap.querySelector("[form-bg]");
+  const closers = wrap.querySelectorAll("[form-close]");
   if (!inner) { console.error("❌ Form modal: [form-inner] not found inside [form-wrap]"); return; }
   if (!bg)    { console.error("❌ Form modal: [form-bg] not found inside [form-wrap]"); return; }
 
@@ -462,5 +463,6 @@ function initFormModal() {
   }
 
   openers.forEach((el) => el.addEventListener("click", openForm));
+  closers.forEach((el) => el.addEventListener("click", closeForm));
   bg.addEventListener("click", closeForm);
 }
