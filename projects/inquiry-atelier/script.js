@@ -466,12 +466,16 @@ function initFormModal() {
   closers.forEach((el) => el.addEventListener("click", closeForm));
   bg.addEventListener("click", closeForm);
 
-  wrap.querySelectorAll('.radio-button-field input[type="radio"]').forEach((radio) => {
+  wrap.querySelectorAll('input[type="radio"]').forEach((radio) => {
     radio.addEventListener("change", () => {
       wrap
         .querySelectorAll(`input[type="radio"][name="${radio.name}"]`)
-        .forEach((r) => r.closest(".radio-button-field")?.classList.remove("is-active"));
-      radio.closest(".radio-button-field")?.classList.add("is-active");
+        .forEach((r) => {
+          const label = r.closest("label");
+          if (label) label.querySelector("span")?.style.setProperty("color", "");
+        });
+      const label = radio.closest("label");
+      if (label) label.querySelector("span")?.style.setProperty("color", "white");
     });
   });
 }
