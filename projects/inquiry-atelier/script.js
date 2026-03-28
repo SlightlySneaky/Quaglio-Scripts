@@ -442,7 +442,7 @@ function initFormModal() {
 
   console.log(`Form modal elements found — openers: ${openers.length}, wrap:`, wrap, "inner:", inner, "bg:", bg);
 
-  gsap.set(wrap,  { autoAlpha: 0, pointerEvents: "none" });
+  gsap.set(wrap,  { display: "flex", autoAlpha: 0, pointerEvents: "none" });
   gsap.set(bg,    { autoAlpha: 0 });
   gsap.set(inner, { x: "100%" });
 
@@ -465,4 +465,13 @@ function initFormModal() {
   openers.forEach((el) => el.addEventListener("click", openForm));
   closers.forEach((el) => el.addEventListener("click", closeForm));
   bg.addEventListener("click", closeForm);
+
+  wrap.querySelectorAll('input[type="radio"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      wrap
+        .querySelectorAll(`input[type="radio"][name="${radio.name}"]`)
+        .forEach((r) => r.closest(".radio_button").classList.remove("is-active"));
+      radio.closest(".radio_button").classList.add("is-active");
+    });
+  });
 }
