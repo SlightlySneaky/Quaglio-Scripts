@@ -68,13 +68,16 @@ function initPreloader() {
 
   const tl = gsap.timeline();
 
+  const getDur = (i) => Math.max(0.25, 0.9 * Math.pow(0.72, i));
+
   tl.to(imgs[0], { clipPath: "inset(0% 0% 0% 0%)", duration: 1.0, ease }, 0);
   if (innerImgs[0]) tl.to(innerImgs[0], { scale: 1, duration: 1.0, ease }, "<");
 
   for (let i = 0; i < imgs.length - 1; i++) {
-    tl.to(imgs[i],     { clipPath: "inset(0% 0% 100% 0%)", duration: 0.9, ease: "power2.inOut" }, ">");
-    tl.to(imgs[i + 1], { clipPath: "inset(0% 0% 0% 0%)",   duration: 0.9, ease },                 "<");
-    if (innerImgs[i + 1]) tl.to(innerImgs[i + 1], { scale: 1, duration: 0.9, ease },              "<");
+    const dur = getDur(i);
+    tl.to(imgs[i],     { clipPath: "inset(0% 0% 100% 0%)", duration: dur, ease: "power2.inOut" }, ">");
+    tl.to(imgs[i + 1], { clipPath: "inset(0% 0% 0% 0%)",   duration: dur, ease },                 "<");
+    if (innerImgs[i + 1]) tl.to(innerImgs[i + 1], { scale: 1, duration: dur, ease },              "<");
     tl.set(imgs[i], { display: "none" });
   }
 
