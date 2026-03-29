@@ -1,7 +1,7 @@
 // Hide text targets immediately to prevent flash before GSAP sets initial state
 (function () {
   const s = document.createElement("style");
-  s.textContent = "[text-body],[text-heading]{visibility:hidden}";
+  s.textContent = "[text-body],[text-heading],[preload-text]{visibility:hidden}";
   document.head.appendChild(s);
 })();
 
