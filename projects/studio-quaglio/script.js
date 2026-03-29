@@ -1,7 +1,7 @@
 // Hide text targets before GSAP sets initial state
 (function () {
   const s = document.createElement("style");
-  s.textContent = "[split-heading][hero],[split-body][hero],[preload-text]{visibility:hidden}";
+  s.textContent = "[split-heading][hero],[split-body][hero],[preload-text]{visibility:hidden}[preload-img]{clip-path:inset(100% 0% 0% 0%)}";
   document.head.appendChild(s);
 })();
 
