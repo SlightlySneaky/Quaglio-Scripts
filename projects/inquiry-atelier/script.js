@@ -446,20 +446,22 @@ function initPreloader() {
 
   const tl = gsap.timeline();
 
-  // — Sequential clip-path image reveals; last image clips back out then hides
+  // — Each image clips in then out before the next; last clips out into text
   imgs.forEach((img, i) => {
-    tl.to(
-      img,
-      { clipPath: "inset(0% 0% 0% 0%)", duration: 1.1, ease },
-      i === 0 ? 0 : ">-=0.1"
-    );
-    if (i === imgs.length - 1) {
-      tl.to(img, { clipPath: "inset(0% 0% 100% 0%)", duration: 1.0, ease }, ">-=0.1");
+    const isLast = i === imgs.length - 1;
+
+    tl.to(img, { clipPath: "inset(0% 0% 0% 0%)", duration: 1.0, ease }, i === 0 ? 0 : ">");
+
+    if (!isLast) {
+      tl.to(img, { clipPath: "inset(0% 0% 100% 0%)", duration: 0.9, ease: "power2.inOut" }, ">");
+      tl.set(img, { display: "none" });
+    } else {
+      tl.to(img, { clipPath: "inset(0% 0% 100% 0%)", duration: 1.2, ease: "power2.inOut" }, ">");
       tl.set(imgs, { display: "none" });
     }
   });
 
-  // — Text line reveal (after last image is gone)
+  // — Text line reveal overlapping the tail of the last image exit
   if (textEl && typeof SplitText !== "undefined") {
     const split = SplitText.create(textEl, {
       type: "lines",
@@ -473,12 +475,12 @@ function initPreloader() {
     tl.to(
       split.lines,
       { yPercent: 0, duration: 0.85, ease, stagger: 0.08 },
-      ">"
+      ">-=0.4"
     );
   }
 
-  // — Hold, fade out, then hand off to hero
-  tl.to({}, { duration: 0.45 })
+  // — Hold 1.2s then fade out and hand off to hero
+  tl.to({}, { duration: 1.2 })
     .to(wrap, {
       autoAlpha: 0,
       duration: 0.7,
