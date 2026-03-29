@@ -438,7 +438,7 @@ function initPreloader() {
 
   const ease = createEase("quaglioPreload");
 
-  gsap.set(wrap, { autoAlpha: 1 });
+  gsap.set(wrap, { display: "flex", autoAlpha: 1 });
 
   if (imgs.length) {
     gsap.set(imgs, { clipPath: "inset(100% 0% 0% 0%)" });
@@ -446,13 +446,16 @@ function initPreloader() {
 
   const tl = gsap.timeline();
 
-  // — Sequential clip-path image reveals
+  // — Sequential clip-path image reveals; last image clips back out
   imgs.forEach((img, i) => {
     tl.to(
       img,
       { clipPath: "inset(0% 0% 0% 0%)", duration: 1.1, ease },
-      i === 0 ? 0 : ">-=0.65"
+      i === 0 ? 0 : ">-=0.1"
     );
+    if (i === imgs.length - 1) {
+      tl.to(img, { clipPath: "inset(0% 0% 100% 0%)", duration: 1.0, ease }, ">-=0.1");
+    }
   });
 
   // — Text line reveal
