@@ -1055,6 +1055,7 @@ function initStickyTitleScroll() {
     headings.forEach((heading, index) => {
       heading.setAttribute("aria-label", heading.textContent);
       const split = new SplitText(heading, { type: "words,chars", mask: "chars", maskClass: "char-mask" });
+      split.chars.forEach(char => { if (char.parentElement) char.parentElement.classList.add("char-mask"); });
       split.words.forEach(word => word.setAttribute("aria-hidden", "true"));
       gsap.set(heading, { visibility: "visible" });
 
