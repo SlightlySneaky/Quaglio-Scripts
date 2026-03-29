@@ -1,3 +1,19 @@
+// Hide text targets before GSAP sets initial state
+(function () {
+  const s = document.createElement("style");
+  s.textContent = "[split-heading][hero],[split-body][hero],[preload-text]{visibility:hidden}";
+  document.head.appendChild(s);
+})();
+
+// ============================================
+// SHARED
+// ============================================
+function createEase(name) {
+  return typeof CustomEase !== "undefined"
+    ? CustomEase.create(name, "M0,0 C0.16,0 0.3,1 1,1")
+    : "expo.out";
+}
+
 // ============================================
 // LENIS
 // ============================================
@@ -17,8 +33,9 @@ window.addEventListener('load', () => ScrollTrigger.refresh());
 // INIT
 // ============================================
 document.addEventListener("DOMContentLoaded", () => {
+  if (document.querySelector('[preloader-wrap]'))                                initPreloader();
   if (document.querySelector('[data-theme-nav="true"]'))                        initNavAnimation();
-  if (document.querySelector('[split-heading], [split-body], [reveal-block]'))  initSplitTextAndReveal();
+  if (document.querySelector('[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]')) initSplitTextAndReveal();
   if (document.querySelector('.cursor'))                                         initDynamicCustomTextCursor();
   if (document.querySelector('[data-bunny-player-init]'))                        initBunnyPlayer();
   if (document.querySelector('[data-video="playpause"]'))                        initPlayPauseVideoScroll();
@@ -28,6 +45,86 @@ document.addEventListener("DOMContentLoaded", () => {
   if (document.querySelector('[data-footer-parallax]'))                          initFooterParallax();
   if (document.querySelector('[data-accordion-css-init]'))                       initAccordionCSS();
 });
+
+
+// ============================================
+// PRELOADER ([preloader-wrap])
+// ============================================
+function initPreloader() {
+  const wrap    = document.querySelector("[preloader-wrap]");
+  const imgWrap = wrap.querySelector("[preload-img-wrap]");
+  const imgs    = imgWrap ? gsap.utils.toArray("[preload-img]", imgWrap) : [];
+  const textEl  = wrap.querySelector("[preload-text]");
+  const ease    = createEase("quaglioPreload");
+
+  gsap.set(wrap, { display: "flex", autoAlpha: 1 });
+
+  const innerImgs = imgs.map((img) => img.querySelector("[img-item]")).filter(Boolean);
+
+  if (imgs.length) {
+    gsap.set(imgs, { clipPath: "inset(100% 0% 0% 0%)" });
+    gsap.set(innerImgs, { scale: 1.05 });
+  }
+
+  const tl = gsap.timeline();
+
+  tl.to(imgs[0], { clipPath: "inset(0% 0% 0% 0%)", duration: 1.0, ease }, 0);
+  if (innerImgs[0]) tl.to(innerImgs[0], { scale: 1, duration: 1.0, ease }, "<");
+
+  for (let i = 0; i < imgs.length - 1; i++) {
+    tl.to(imgs[i],     { clipPath: "inset(0% 0% 100% 0%)", duration: 0.9, ease: "power2.inOut" }, ">");
+    tl.to(imgs[i + 1], { clipPath: "inset(0% 0% 0% 0%)",   duration: 0.9, ease },                 "<");
+    if (innerImgs[i + 1]) tl.to(innerImgs[i + 1], { scale: 1, duration: 0.9, ease },              "<");
+    tl.set(imgs[i], { display: "none" });
+  }
+
+  tl.to(imgs[imgs.length - 1], { clipPath: "inset(0% 0% 100% 0%)", duration: 1.2, ease: "power2.inOut" }, ">");
+  tl.set(imgs, { display: "none" });
+
+  if (textEl && typeof SplitText !== "undefined") {
+    const split = SplitText.create(textEl, {
+      type: "lines", mask: "lines", linesClass: "text-line", autoSplit: true,
+    });
+    gsap.set(split.lines, { yPercent: 110 });
+    textEl.style.visibility = "visible";
+    tl.to(split.lines, { yPercent: 0, duration: 0.85, ease, stagger: 0.08 }, ">-=0.4");
+  }
+
+  tl.to({}, { duration: 1.2 })
+    .to(wrap, {
+      autoAlpha: 0,
+      duration: 0.7,
+      ease: "power2.inOut",
+      onComplete() {
+        gsap.set(wrap, { display: "none" });
+        animateHeroText();
+      },
+    });
+}
+
+function animateHeroText() {
+  if (typeof SplitText === "undefined") return;
+
+  const ease = createEase("quaglioHero");
+
+  gsap.utils.toArray("[split-body][hero]").forEach((el) => {
+    const split = SplitText.create(el, {
+      type: "lines", mask: "lines", linesClass: "is-split-line", autoSplit: true,
+    });
+    gsap.set(split.lines, { yPercent: 120, autoAlpha: 0 });
+    el.style.visibility = "visible";
+    gsap.to(split.lines, { yPercent: 0, autoAlpha: 1, duration: 0.9, ease, stagger: 0.08 });
+  });
+
+  gsap.utils.toArray("[split-heading][hero]").forEach((el) => {
+    const split = SplitText.create(el, {
+      type: "chars,words", mask: "chars", charsClass: "is-split-char", autoSplit: true,
+    });
+    gsap.set(split.chars, { yPercent: 120, autoAlpha: 0 });
+    el.style.visibility = "visible";
+    gsap.to(split.chars, { yPercent: 0, autoAlpha: 1, duration: 0.8, ease, stagger: 0.02 });
+  });
+}
 
 
 // ============================================
@@ -113,7 +210,7 @@ function initSplitTextAndReveal() {
 
     // ---------- HEADINGS: split by characters ---------- //
     if (hasSplitText) {
-      const headings = document.querySelectorAll("[split-heading]");
+      const headings = document.querySelectorAll("[split-heading]:not([hero])");
       headings.forEach((heading) => {
         const delayAttr = parseFloat(heading.getAttribute("data-split-delay")) || 0;
         const isLoadAnim = heading.getAttribute("data-split-load") === "true";
@@ -150,7 +247,7 @@ function initSplitTextAndReveal() {
       });
 
       // ---------- BODY: split by lines ---------- //
-      const bodies = document.querySelectorAll("[split-body]");
+      const bodies = document.querySelectorAll("[split-body]:not([hero])");
       bodies.forEach((body) => {
         const delayAttr = parseFloat(body.getAttribute("data-split-delay")) || 0.1;
         const isLoadAnim = body.getAttribute("data-split-load") === "true";
