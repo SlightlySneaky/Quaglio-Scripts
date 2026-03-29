@@ -21,11 +21,6 @@ gsap.registerPlugin(ScrollTrigger, Observer);
 ScrollTrigger.config({ ignoreMobileResize: true });
 ScrollTrigger.normalizeScroll({ allowNestedScroll: true });
 
-const lenis = new Lenis();
-lenis.on('scroll', ScrollTrigger.update);
-gsap.ticker.add((time) => { lenis.raf(time * 1000); });
-gsap.ticker.lagSmoothing(0);
-
 window.addEventListener('load', () => ScrollTrigger.refresh());
 
 
@@ -33,6 +28,12 @@ window.addEventListener('load', () => ScrollTrigger.refresh());
 // INIT
 // ============================================
 document.addEventListener("DOMContentLoaded", () => {
+  if (typeof Lenis === "undefined") {
+    console.warn("⚠️ Lenis: not found (script not loaded?)");
+  } else {
+    initLenis();
+  }
+
   if (document.querySelector('[preloader-wrap]'))                                initPreloader();
   if (document.querySelector('[data-theme-nav="true"]'))                        initNavAnimation();
   if (document.querySelector('[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]')) initSplitTextAndReveal();
@@ -46,6 +47,17 @@ document.addEventListener("DOMContentLoaded", () => {
   if (document.querySelector('[data-accordion-css-init]'))                       initAccordionCSS();
   if (document.querySelector('[data-draggable-marquee-init]'))                   initDraggableMarquee();
 });
+
+
+// ============================================
+// LENIS
+// ============================================
+function initLenis() {
+  const lenis = new Lenis();
+  lenis.on("scroll", ScrollTrigger.update);
+  gsap.ticker.add((time) => { lenis.raf(time * 1000); });
+  gsap.ticker.lagSmoothing(0);
+}
 
 
 // ============================================
