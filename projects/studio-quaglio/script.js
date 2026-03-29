@@ -98,7 +98,7 @@ function initPreloader() {
 
   if (textEl && typeof SplitText !== "undefined") {
     const split = SplitText.create(textEl, {
-      type: "lines", mask: "lines", linesClass: "text-line", autoSplit: true,
+      type: "lines", mask: "lines", maskClass: "line-mask", linesClass: "text-line", autoSplit: true,
     });
     gsap.set(split.lines, { yPercent: 110 });
     textEl.style.visibility = "visible";
@@ -124,7 +124,7 @@ function animateHeroText() {
 
   gsap.utils.toArray("[split-body][hero]").forEach((el) => {
     const split = SplitText.create(el, {
-      type: "lines", mask: "lines", linesClass: "is-split-line", autoSplit: true,
+      type: "lines", mask: "lines", maskClass: "line-mask", linesClass: "is-split-line", autoSplit: true,
     });
     gsap.set(split.lines, { yPercent: 120, autoAlpha: 0 });
     el.style.visibility = "visible";
@@ -133,7 +133,7 @@ function animateHeroText() {
 
   gsap.utils.toArray("[split-heading][hero]").forEach((el) => {
     const split = SplitText.create(el, {
-      type: "chars,words", mask: "chars", charsClass: "is-split-char", autoSplit: true,
+      type: "chars,words", mask: "chars", maskClass: "char-mask", charsClass: "is-split-char", autoSplit: true,
     });
     gsap.set(split.chars, { yPercent: 120, autoAlpha: 0 });
     el.style.visibility = "visible";
@@ -233,6 +233,7 @@ function initSplitTextAndReveal() {
         const split = new SplitText(heading, {
           type: "chars,words",
           mask: "chars",
+          maskClass: "char-mask",
           charsClass: "is-split-char",
           wordsClass: "is-split-word"
         });
@@ -271,6 +272,7 @@ function initSplitTextAndReveal() {
         const split = new SplitText(body, {
           type: "lines",
           mask: "lines",
+          maskClass: "line-mask",
           linesClass: "is-split-line"
         });
 
@@ -959,17 +961,17 @@ function initTestimonialSlider() {
       const splits    = { profileEl };
 
       if (quoteEl) {
-        splits.quote = new SplitText(quoteEl, { type: "lines,words", mask: "lines" });
+        splits.quote = new SplitText(quoteEl, { type: "lines,words", mask: "lines", maskClass: "line-mask" });
         gsap.set(quoteEl, { opacity: 1 });
         gsap.set(splits.quote.words, { opacity: 0, y: 30 });
       }
       if (nameEl) {
-        splits.name = new SplitText(nameEl, { type: "chars", mask: "chars" });
+        splits.name = new SplitText(nameEl, { type: "chars", mask: "chars", maskClass: "char-mask" });
         gsap.set(nameEl, { opacity: 1 });
         gsap.set(splits.name.chars, { opacity: 0, y: 10 });
       }
       if (roleEl) {
-        splits.role = new SplitText(roleEl, { type: "words", mask: "words" });
+        splits.role = new SplitText(roleEl, { type: "words", mask: "words", maskClass: "word-mask" });
         gsap.set(roleEl, { opacity: 1 });
         gsap.set(splits.role.words, { opacity: 0, y: 10 });
       }
@@ -1052,7 +1054,7 @@ function initStickyTitleScroll() {
 
     headings.forEach((heading, index) => {
       heading.setAttribute("aria-label", heading.textContent);
-      const split = new SplitText(heading, { type: "words,chars", mask: "chars" });
+      const split = new SplitText(heading, { type: "words,chars", mask: "chars", maskClass: "char-mask" });
       split.words.forEach(word => word.setAttribute("aria-hidden", "true"));
       gsap.set(heading, { visibility: "visible" });
 
