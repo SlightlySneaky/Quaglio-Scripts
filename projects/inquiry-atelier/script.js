@@ -446,7 +446,7 @@ function initPreloader() {
 
   const tl = gsap.timeline();
 
-  // — Sequential clip-path image reveals; last image clips back out
+  // — Sequential clip-path image reveals; last image clips back out then hides
   imgs.forEach((img, i) => {
     tl.to(
       img,
@@ -455,10 +455,11 @@ function initPreloader() {
     );
     if (i === imgs.length - 1) {
       tl.to(img, { clipPath: "inset(0% 0% 100% 0%)", duration: 1.0, ease }, ">-=0.1");
+      tl.set(img, { display: "none" });
     }
   });
 
-  // — Text line reveal
+  // — Text line reveal (after last image is gone)
   if (textEl && typeof SplitText !== "undefined") {
     const split = SplitText.create(textEl, {
       type: "lines",
@@ -472,7 +473,7 @@ function initPreloader() {
     tl.to(
       split.lines,
       { yPercent: 0, duration: 0.85, ease, stagger: 0.08 },
-      ">-=0.25"
+      ">"
     );
   }
 
