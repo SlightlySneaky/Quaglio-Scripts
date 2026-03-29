@@ -440,8 +440,11 @@ function initPreloader() {
 
   gsap.set(wrap, { display: "flex", autoAlpha: 1 });
 
+  const innerImgs = imgs.map((img) => img.querySelector("img")).filter(Boolean);
+
   if (imgs.length) {
     gsap.set(imgs, { clipPath: "inset(100% 0% 0% 0%)" });
+    gsap.set(innerImgs, { scale: 1.05 });
   }
 
   const tl = gsap.timeline();
@@ -449,10 +452,12 @@ function initPreloader() {
   // — First image clips in alone; each exit simultaneously reveals the next;
   //   last image exits alone into text
   tl.to(imgs[0], { clipPath: "inset(0% 0% 0% 0%)", duration: 1.0, ease }, 0);
+  if (innerImgs[0]) tl.to(innerImgs[0], { scale: 1, duration: 1.0, ease }, "<");
 
   for (let i = 0; i < imgs.length - 1; i++) {
     tl.to(imgs[i],     { clipPath: "inset(0% 0% 100% 0%)", duration: 0.9, ease: "power2.inOut" }, ">");
     tl.to(imgs[i + 1], { clipPath: "inset(0% 0% 0% 0%)",   duration: 0.9, ease },                 "<");
+    if (innerImgs[i + 1]) tl.to(innerImgs[i + 1], { scale: 1, duration: 0.9, ease },              "<");
     tl.set(imgs[i], { display: "none" });
   }
 
