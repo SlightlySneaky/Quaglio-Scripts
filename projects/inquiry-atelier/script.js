@@ -446,20 +446,18 @@ function initPreloader() {
 
   const tl = gsap.timeline();
 
-  // — Each image clips in then out before the next; last clips out into text
-  imgs.forEach((img, i) => {
-    const isLast = i === imgs.length - 1;
+  // — First image clips in alone; each exit simultaneously reveals the next;
+  //   last image exits alone into text
+  tl.to(imgs[0], { clipPath: "inset(0% 0% 0% 0%)", duration: 1.0, ease }, 0);
 
-    tl.to(img, { clipPath: "inset(0% 0% 0% 0%)", duration: 1.0, ease }, i === 0 ? 0 : ">");
+  for (let i = 0; i < imgs.length - 1; i++) {
+    tl.to(imgs[i],     { clipPath: "inset(0% 0% 100% 0%)", duration: 0.9, ease: "power2.inOut" }, ">");
+    tl.to(imgs[i + 1], { clipPath: "inset(0% 0% 0% 0%)",   duration: 0.9, ease },                 "<");
+    tl.set(imgs[i], { display: "none" });
+  }
 
-    if (!isLast) {
-      tl.to(img, { clipPath: "inset(0% 0% 100% 0%)", duration: 0.9, ease: "power2.inOut" }, ">");
-      tl.set(img, { display: "none" });
-    } else {
-      tl.to(img, { clipPath: "inset(0% 0% 100% 0%)", duration: 1.2, ease: "power2.inOut" }, ">");
-      tl.set(imgs, { display: "none" });
-    }
-  });
+  tl.to(imgs[imgs.length - 1], { clipPath: "inset(0% 0% 100% 0%)", duration: 1.2, ease: "power2.inOut" }, ">");
+  tl.set(imgs, { display: "none" });
 
   // — Text line reveal overlapping the tail of the last image exit
   if (textEl && typeof SplitText !== "undefined") {
