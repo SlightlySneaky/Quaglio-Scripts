@@ -440,7 +440,7 @@ function initPreloader() {
 
   gsap.set(wrap, { display: "flex", autoAlpha: 1 });
 
-  const innerImgs = imgs.map((img) => img.querySelector("img")).filter(Boolean);
+  const innerImgs = imgs.map((img) => img.querySelector("[img-item]")).filter(Boolean);
 
   if (imgs.length) {
     gsap.set(imgs, { clipPath: "inset(100% 0% 0% 0%)" });
