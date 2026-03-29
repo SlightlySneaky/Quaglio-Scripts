@@ -33,10 +33,11 @@ document.addEventListener("DOMContentLoaded", () => {
     tryInit("Lenis", true, initLenis);
   }
 
+  tryInit("Preloader",         document.querySelector("[preloader-wrap]"),                                                                    initPreloader);
   tryInit("Image animations",  document.querySelector(".img"),                                                                               initImageAnimations);
   tryInit("Testimonials",      document.querySelector("[data-testimonial-wrap]"),                                                            initLineRevealTestimonials);
   tryInit("Line animations",   document.querySelector(".line-bot, .line-top, .line-straight, .line-left, .left-right"),                      initLineAnimations);
-  tryInit("Text animations",   typeof SplitText !== "undefined" && document.querySelector("[text-body], [text-heading]"),                    initTextAnimations);
+  tryInit("Text animations",   typeof SplitText !== "undefined" && document.querySelector("[text-body]:not([hero]), [text-heading]:not([hero])"), initTextAnimations);
   tryInit("Animated grid",     document.querySelector("[data-animated-grid]"),                                                               initAnimatedGrid);
   tryInit("Form modal",        document.querySelector("[form-open]"),                                                                        initFormModal);
 
@@ -324,7 +325,7 @@ function initLineAnimations() {
 function initTextAnimations() {
   const ease = createEase("quaglioText");
 
-  gsap.utils.toArray("[text-body]").forEach((el) => {
+  gsap.utils.toArray("[text-body]:not([hero])").forEach((el) => {
     const split = SplitText.create(el, {
       type: "lines,words",
       mask: "lines",
@@ -345,7 +346,7 @@ function initTextAnimations() {
     });
   });
 
-  gsap.utils.toArray("[text-heading]").forEach((el) => {
+  gsap.utils.toArray("[text-heading]:not([hero])").forEach((el) => {
     const split = SplitText.create(el, {
       type: "chars,words",
       mask: "chars",
@@ -422,6 +423,96 @@ function initAnimatedGrid() {
     if (!(e.shiftKey && (e.key || "").toLowerCase() === "g")) return;
     e.preventDefault();
     toggleGrid();
+  });
+}
+
+// ============================================
+// Preloader ([preloader-wrap])
+// ============================================
+
+function initPreloader() {
+  const wrap    = document.querySelector("[preloader-wrap]");
+  const imgWrap = wrap.querySelector("[preload-img-wrap]");
+  const imgs    = imgWrap ? gsap.utils.toArray("[preload-img]", imgWrap) : [];
+  const textEl  = wrap.querySelector("[preload-text]");
+
+  const ease = createEase("quaglioPreload");
+
+  gsap.set(wrap, { autoAlpha: 1 });
+
+  if (imgs.length) {
+    gsap.set(imgs, { clipPath: "inset(100% 0% 0% 0%)" });
+  }
+
+  const tl = gsap.timeline();
+
+  // — Sequential clip-path image reveals
+  imgs.forEach((img, i) => {
+    tl.to(
+      img,
+      { clipPath: "inset(0% 0% 0% 0%)", duration: 1.1, ease },
+      i === 0 ? 0 : ">-=0.65"
+    );
+  });
+
+  // — Text line reveal
+  if (textEl && typeof SplitText !== "undefined") {
+    const split = SplitText.create(textEl, {
+      type: "lines",
+      mask: "lines",
+      linesClass: "text-line",
+      autoSplit: true,
+    });
+    gsap.set(split.lines, { yPercent: 110 });
+    textEl.style.visibility = "visible";
+
+    tl.to(
+      split.lines,
+      { yPercent: 0, duration: 0.85, ease, stagger: 0.08 },
+      ">-=0.25"
+    );
+  }
+
+  // — Hold, fade out, then hand off to hero
+  tl.to({}, { duration: 0.45 })
+    .to(wrap, {
+      autoAlpha: 0,
+      duration: 0.7,
+      ease: "power2.inOut",
+      onComplete() {
+        gsap.set(wrap, { display: "none" });
+        animateHeroText();
+      },
+    });
+}
+
+function animateHeroText() {
+  if (typeof SplitText === "undefined") return;
+
+  const ease = createEase("quaglioHero");
+
+  gsap.utils.toArray("[text-body][hero]").forEach((el) => {
+    const split = SplitText.create(el, {
+      type: "lines,words",
+      mask: "lines",
+      linesClass: "text-line",
+      autoSplit: true,
+    });
+    gsap.set(split.lines, { yPercent: 108, rotation: 2, transformOrigin: "left bottom" });
+    el.style.visibility = "visible";
+    gsap.to(split.lines, { yPercent: 0, rotation: 0, duration: 1.0, ease, stagger: 0.07 });
+  });
+
+  gsap.utils.toArray("[text-heading][hero]").forEach((el) => {
+    const split = SplitText.create(el, {
+      type: "chars,words",
+      mask: "chars",
+      charsClass: "text-char",
+      autoSplit: true,
+    });
+    gsap.set(split.chars, { yPercent: 110 });
+    el.style.visibility = "visible";
+    gsap.to(split.chars, { yPercent: 0, duration: 0.9, ease, stagger: 0.03 });
   });
 }
 
