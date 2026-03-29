@@ -19,7 +19,6 @@ function createEase(name) {
 // ============================================
 gsap.registerPlugin(ScrollTrigger, Observer);
 ScrollTrigger.config({ ignoreMobileResize: true });
-ScrollTrigger.normalizeScroll({ allowNestedScroll: true });
 
 window.addEventListener('load', () => ScrollTrigger.refresh());
 
