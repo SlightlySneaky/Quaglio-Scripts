@@ -1,16 +1,16 @@
 // ============================================
 // LENIS
 // ============================================
+gsap.registerPlugin(ScrollTrigger);
+ScrollTrigger.config({ ignoreMobileResize: true });
+ScrollTrigger.normalizeScroll({ allowNestedScroll: true });
+
 const lenis = new Lenis();
-lenis.stop();
 lenis.on('scroll', ScrollTrigger.update);
 gsap.ticker.add((time) => { lenis.raf(time * 1000); });
 gsap.ticker.lagSmoothing(0);
 
-window.addEventListener('load', () => {
-  ScrollTrigger.refresh();
-  lenis.start();
-});
+window.addEventListener('load', () => ScrollTrigger.refresh());
 
 
 // ============================================
@@ -1110,5 +1110,5 @@ function initAccordionCSS() {
     init();
   }
 
-  new MutationObserver(() => init()).observe(document.documentElement, { childList: true, subtree: true });
+  new MutationObserver(() => init()).observe(document.body, { childList: true, subtree: false });
 })();
