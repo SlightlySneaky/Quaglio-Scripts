@@ -455,7 +455,7 @@ function initPreloader() {
     );
     if (i === imgs.length - 1) {
       tl.to(img, { clipPath: "inset(0% 0% 100% 0%)", duration: 1.0, ease }, ">-=0.1");
-      tl.set(img, { display: "none" });
+      tl.set(imgs, { display: "none" });
     }
   });
 
