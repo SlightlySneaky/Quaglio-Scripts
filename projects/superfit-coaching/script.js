@@ -124,19 +124,55 @@ function initFadeScaleSlideshows(scope = document) {
 }
 
 // ─── HERO + FOOTER PARALLAX ───────────────────────────────────────────────────
+// function initParallax() {
+//   document.querySelectorAll("[data-hero-parallax]").forEach((el) => {
+//     const inner = el.querySelector("[data-hero-parallax-inner]");
+//     const dark = el.querySelector("[data-hero-parallax-dark]");
+
+//     const tl = gsap.timeline({
+//       scrollTrigger: { trigger: el, start: "top top", end: "bottom top", scrub: true },
+//     });
+
+//     if (inner) tl.to(inner, { yPercent: 25, ease: "linear" });
+//     if (dark) tl.to(dark, { opacity: 0.7, ease: "linear" }, "<");
+//   });
+
+//   document.querySelectorAll("[data-footer-parallax]").forEach((el) => {
+//     const inner = el.querySelector("[data-footer-parallax-inner]");
+//     const dark = el.querySelector("[data-footer-parallax-dark]");
+
+//     const tl = gsap.timeline({
+//       scrollTrigger: {
+//         trigger: el,
+//         start: "clamp(top bottom)",
+//         end: "clamp(top top)",
+//         scrub: true,
+//       },
+//     });
+
+//     if (inner) tl.from(inner, { yPercent: -25, ease: "linear" });
+//     if (dark) tl.from(dark, { opacity: 0.5, ease: "linear" }, "<");
+//   });
+// }
 function initParallax() {
-  document.querySelectorAll("[data-hero-parallax]").forEach((el) => {
-    const inner = el.querySelector("[data-hero-parallax-inner]");
-    const dark = el.querySelector("[data-hero-parallax-dark]");
+  const mm = gsap.matchMedia();
 
-    const tl = gsap.timeline({
-      scrollTrigger: { trigger: el, start: "top top", end: "bottom top", scrub: true },
+  // ── Hero parallax (desktop only) ──
+  mm.add("(min-width: 768px)", () => {
+    document.querySelectorAll("[data-hero-parallax]").forEach((el) => {
+      const inner = el.querySelector("[data-hero-parallax-inner]");
+      const dark = el.querySelector("[data-hero-parallax-dark]");
+
+      const tl = gsap.timeline({
+        scrollTrigger: { trigger: el, start: "top top", end: "bottom top", scrub: true },
+      });
+
+      if (inner) tl.to(inner, { yPercent: 25, ease: "linear" });
+      if (dark) tl.to(dark, { opacity: 0.7, ease: "linear" }, "<");
     });
-
-    if (inner) tl.to(inner, { yPercent: 25, ease: "linear" });
-    if (dark) tl.to(dark, { opacity: 0.7, ease: "linear" }, "<");
   });
 
+  // ── Footer parallax (all screen sizes) ──
   document.querySelectorAll("[data-footer-parallax]").forEach((el) => {
     const inner = el.querySelector("[data-footer-parallax-inner]");
     const dark = el.querySelector("[data-footer-parallax-dark]");
@@ -154,7 +190,6 @@ function initParallax() {
     if (dark) tl.from(dark, { opacity: 0.5, ease: "linear" }, "<");
   });
 }
-
 // ─── STICKY TITLE SCROLL (PROBLEM SECTION) ────────────────────────────────────
 function initStickyTitleScroll() {
   const wraps = document.querySelectorAll('[data-sticky-title="wrap"]');
