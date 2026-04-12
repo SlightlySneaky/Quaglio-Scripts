@@ -1323,6 +1323,62 @@ function initDraggableMarquee() {
 
 
 // ============================================
+// Form modal ([form-open] / [form-wrap])
+// ============================================
+
+function initFormModal() {
+  const openers = document.querySelectorAll("[form-open]");
+  const wrap    = document.querySelector("[form-wrap]");
+  if (!wrap) return;
+
+  const inner   = wrap.querySelector("[form-inner]");
+  const bg      = wrap.querySelector("[form-bg]");
+  const closers = wrap.querySelectorAll("[form-close]");
+  if (!inner) { console.error("❌ Form modal: [form-inner] not found inside [form-wrap]"); return; }
+  if (!bg)    { console.error("❌ Form modal: [form-bg] not found inside [form-wrap]"); return; }
+
+  console.log(`Form modal elements found — openers: ${openers.length}, wrap:`, wrap, "inner:", inner, "bg:", bg);
+
+  gsap.set(wrap,  { display: "flex", autoAlpha: 0, pointerEvents: "none" });
+  gsap.set(bg,    { autoAlpha: 0 });
+  gsap.set(inner, { x: "100%" });
+
+  function openForm() {
+    console.log("Form modal: open triggered");
+    gsap.set(wrap, { autoAlpha: 1, pointerEvents: "auto" });
+    const tl = gsap.timeline();
+    tl.to(bg, { autoAlpha: 1, duration: 0.5, ease: "power2.out" }, 0)
+      .to(inner, { x: "0%", duration: 0.65, ease: "power3.out" }, "-=0.15");
+  }
+
+  function closeForm() {
+    const tl = gsap.timeline({
+      onComplete: () => gsap.set(wrap, { autoAlpha: 0, pointerEvents: "none" }),
+    });
+    tl.to(inner, { x: "100%", duration: 0.5, ease: "power3.in" }, 0)
+      .to(bg, { autoAlpha: 0, duration: 0.4, ease: "power2.in" }, 0.1);
+  }
+
+  openers.forEach((el) => el.addEventListener("click", openForm));
+  closers.forEach((el) => el.addEventListener("click", closeForm));
+  bg.addEventListener("click", closeForm);
+
+  wrap.querySelectorAll('input[type="radio"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      wrap
+        .querySelectorAll(`input[type="radio"][name="${radio.name}"]`)
+        .forEach((r) => {
+          const text = r.closest("label")?.querySelector(".w-form-label");
+          if (text) text.style.color = "";
+        });
+      const text = radio.closest("label")?.querySelector(".w-form-label");
+      if (text) text.style.color = "white";
+    });
+  });
+}
+
+
+// ============================================
 // BUTTON CHARACTER STAGGER ([data-button-animate-chars])
 // ============================================
 function initButtonCharacterStagger() {
