@@ -46,6 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (document.querySelector('[data-accordion-css-init]'))                       initAccordionCSS();
   if (document.querySelector('[data-draggable-marquee-init]'))                   initDraggableMarquee();
   if (document.querySelector('[data-button-animate-chars]'))                     initButtonCharacterStagger();
+  if (document.querySelector('[form-wrap]')) initFormModal();
 });
 
 

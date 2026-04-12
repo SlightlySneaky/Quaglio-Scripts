@@ -33,13 +33,13 @@ document.addEventListener("DOMContentLoaded", () => {
     tryInit("Lenis", true, initLenis);
   }
 
-  tryInit("Preloader",         document.querySelector("[preloader-wrap]"),                                                                    initPreloader);
-  tryInit("Image animations",  document.querySelector(".img"),                                                                               initImageAnimations);
-  tryInit("Testimonials",      document.querySelector("[data-testimonial-wrap]"),                                                            initLineRevealTestimonials);
-  tryInit("Line animations",   document.querySelector(".line-bot, .line-top, .line-straight, .line-left, .left-right"),                      initLineAnimations);
-  tryInit("Text animations",   typeof SplitText !== "undefined" && document.querySelector("[text-body]:not([hero]), [text-heading]:not([hero])"), initTextAnimations);
-  tryInit("Animated grid",     document.querySelector("[data-animated-grid]"),                                                               initAnimatedGrid);
-  tryInit("Form modal",        document.querySelector("[form-open]"),                                                                        initFormModal);
+  tryInit("Preloader", document.querySelector("[preloader-wrap]"),initPreloader);
+  tryInit("Image animations", document.querySelector(".img"),initImageAnimations);
+  tryInit("Testimonials", document.querySelector("[data-testimonial-wrap]"),initLineRevealTestimonials);
+  tryInit("Line animations", document.querySelector(".line-bot, .line-top, .line-straight, .line-left, .left-right"),initLineAnimations);
+  tryInit("Text animations", typeof SplitText !== "undefined" && document.querySelector("[text-body]:not([hero]), [text-heading]:not([hero])"),initTextAnimations);
+  tryInit("Animated grid", document.querySelector("[data-animated-grid]"),initAnimatedGrid);
+  tryInit("Form modal", document.querySelector("[form-open]"),initFormModal);
 
   if (typeof SplitText === "undefined" && document.querySelector("[text-body], [text-heading]")) {
     console.warn("⚠️ Text animations: SplitText not loaded");
@@ -579,3 +579,4 @@ function initFormModal() {
     });
   });
 }
+
