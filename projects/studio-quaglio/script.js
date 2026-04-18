@@ -1428,17 +1428,14 @@ function initSwiperSlider() {
 
     swiperSliderWrap.classList.add("swiper");
 
+    const wrapperEl = swiperSliderWrap.querySelector(".swiper-wrapper-2");
+    if (wrapperEl) wrapperEl.classList.add("swiper-wrapper");
+    swiperSliderWrap.querySelectorAll(".swiper-slide-2").forEach(s => s.classList.add("swiper-slide"));
+
     const prevButton = swiperGroup.querySelector("[data-swiper-prev]");
     const nextButton = swiperGroup.querySelector("[data-swiper-next]");
-    console.log(`🔵 Group ${i}: prevButton →`, prevButton, `| nextButton →`, nextButton);
-
-    const wrapper = swiperSliderWrap.querySelector(".swiper-wrapper");
-    const slides  = swiperSliderWrap.querySelectorAll(".swiper-slide");
-    console.log(`🔵 Group ${i}: .swiper-wrapper →`, wrapper, `| slides found: ${slides.length}`);
 
     new Swiper(swiperSliderWrap, {
-      wrapperClass: "swiper-wrapper-2",
-      slideClass: "swiper-slide-2",
       slidesPerView: 1,
       spaceBetween: 0,
       speed: 600,
