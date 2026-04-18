@@ -1436,6 +1436,7 @@ function initSwiperSlider() {
     const nextButton = swiperGroup.querySelector("[data-swiper-next]");
 
     new Swiper(swiperSliderWrap, {
+      parallax: true,
       slidesPerView: 1,
       spaceBetween: 0,
       speed: 600,
