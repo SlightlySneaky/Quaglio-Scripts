@@ -1437,6 +1437,8 @@ function initSwiperSlider() {
     console.log(`🔵 Group ${i}: .swiper-wrapper →`, wrapper, `| slides found: ${slides.length}`);
 
     new Swiper(swiperSliderWrap, {
+      wrapperClass: "swiper-wrapper-2",
+      slideClass: "swiper-slide-2",
       slidesPerView: 1,
       spaceBetween: 0,
       speed: 600,
