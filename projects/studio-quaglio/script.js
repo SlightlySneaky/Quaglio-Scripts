@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (document.querySelector('[data-draggable-marquee-init]'))                   initDraggableMarquee();
   if (document.querySelector('[data-button-animate-chars]'))                     initButtonCharacterStagger();
   if (document.querySelector('[form-wrap]'))                                     initFormModal();
-  if (document.querySelector('[data-swiper-group]'))                             initSwiperSlider();
+  if (document.querySelector('[data-swiper-group="2"]'))                        initSwiperSlider();
 });
 
 
@@ -1415,16 +1415,26 @@ function initButtonCharacterStagger() {
 function initSwiperSlider() {
   const cssBezier = "cubic-bezier(0.16, 0, 0.3, 1)";
 
-  document.querySelectorAll("[data-swiper-group]").forEach((swiperGroup) => {
-    const swiperSliderWrap = swiperGroup.querySelector("[data-swiper-wrap]");
-    if (!swiperSliderWrap) return;
+  const groups = document.querySelectorAll('[data-swiper-group="2"]');
+  console.log(`🔵 initSwiperSlider: found ${groups.length} group(s)`);
 
-    // Add .swiper so Swiper's built-in CSS applies, without conflicting with
-    // initTestimonialSlider which already ran and targeted its own element
+  groups.forEach((swiperGroup, i) => {
+    const swiperSliderWrap = swiperGroup.querySelector("[data-swiper-wrap]");
+    console.log(`🔵 Group ${i}: wrap element →`, swiperSliderWrap);
+    if (!swiperSliderWrap) {
+      console.warn(`⚠️ Group ${i}: no [data-swiper-wrap] found, skipping`);
+      return;
+    }
+
     swiperSliderWrap.classList.add("swiper");
 
     const prevButton = swiperGroup.querySelector("[data-swiper-prev]");
     const nextButton = swiperGroup.querySelector("[data-swiper-next]");
+    console.log(`🔵 Group ${i}: prevButton →`, prevButton, `| nextButton →`, nextButton);
+
+    const wrapper = swiperSliderWrap.querySelector(".swiper-wrapper");
+    const slides  = swiperSliderWrap.querySelectorAll(".swiper-slide");
+    console.log(`🔵 Group ${i}: .swiper-wrapper →`, wrapper, `| slides found: ${slides.length}`);
 
     new Swiper(swiperSliderWrap, {
       slidesPerView: 1,
@@ -1446,11 +1456,18 @@ function initSwiperSlider() {
       },
       on: {
         init() {
+          console.log(`✅ Group ${i}: Swiper initialized — slides: ${this.slides.length}, loop: ${this.params.loop}`);
           this.wrapperEl.style.transitionTimingFunction = cssBezier;
         },
         setTransition(duration) {
           this.wrapperEl.style.transitionDuration = `${duration}ms`;
           this.wrapperEl.style.transitionTimingFunction = cssBezier;
+        },
+        slideChange() {
+          console.log(`🔵 Group ${i}: slide changed → index ${this.realIndex}`);
+        },
+        error(err) {
+          console.error(`❌ Group ${i}: Swiper error →`, err);
         },
       },
     });
