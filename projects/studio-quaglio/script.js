@@ -1413,17 +1413,20 @@ function initButtonCharacterStagger() {
 // to avoid conflicting with the testimonial swiper
 // ============================================
 function initSwiperSlider() {
-  const ease = createEase("swiperEase"); // "M0,0 C0.16,0 0.3,1 1,1" → cubic-bezier(0.16,0,0.3,1)
   const cssBezier = "cubic-bezier(0.16, 0, 0.3, 1)";
 
   document.querySelectorAll("[data-swiper-group]").forEach((swiperGroup) => {
     const swiperSliderWrap = swiperGroup.querySelector("[data-swiper-wrap]");
     if (!swiperSliderWrap) return;
 
+    // Add .swiper so Swiper's built-in CSS applies, without conflicting with
+    // initTestimonialSlider which already ran and targeted its own element
+    swiperSliderWrap.classList.add("swiper");
+
     const prevButton = swiperGroup.querySelector("[data-swiper-prev]");
     const nextButton = swiperGroup.querySelector("[data-swiper-next]");
 
-    const swiper = new Swiper(swiperSliderWrap, {
+    new Swiper(swiperSliderWrap, {
       slidesPerView: 1,
       spaceBetween: 0,
       speed: 600,
@@ -1432,18 +1435,10 @@ function initSwiperSlider() {
         delay: 2000,
         disableOnInteraction: false,
       },
-      wrapperClass: "swiper-wrapper-2",
-      slideClass: "swiper-slide-2",
-      mousewheel: true,
       grabCursor: true,
       navigation: {
         nextEl: nextButton,
         prevEl: prevButton,
-      },
-      pagination: {
-        el: swiperGroup.querySelector(".swiper-pagination"),
-        type: "bullets",
-        clickable: true,
       },
       keyboard: {
         enabled: true,
@@ -1451,7 +1446,6 @@ function initSwiperSlider() {
       },
       on: {
         init() {
-          // Apply the same cubic-bezier used by createEase
           this.wrapperEl.style.transitionTimingFunction = cssBezier;
         },
         setTransition(duration) {
