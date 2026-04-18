@@ -46,7 +46,11 @@ document.addEventListener("DOMContentLoaded", () => {
   if (document.querySelector('[data-accordion-css-init]'))                       initAccordionCSS();
   if (document.querySelector('[data-draggable-marquee-init]'))                   initDraggableMarquee();
   if (document.querySelector('[data-button-animate-chars]'))                     initButtonCharacterStagger();
+<<<<<<< HEAD
   if (document.querySelector('[form-wrap]')) initFormModal();
+=======
+  if (document.querySelector('[data-swiper-group]'))                             initSwiperSlider();
+>>>>>>> 1677796 (sync: 2026-04-18 12:45:29)
 });
 
 
@@ -1401,6 +1405,63 @@ function initButtonCharacterStagger() {
       }
 
       button.appendChild(span);
+    });
+  });
+}
+
+
+// ============================================
+// SWIPER SLIDER ([data-swiper-group])
+// Uses swiper-2 / swiper-wrapper-2 / swiper-slide-2 classes
+// to avoid conflicting with the testimonial swiper
+// ============================================
+function initSwiperSlider() {
+  const ease = createEase("swiperEase"); // "M0,0 C0.16,0 0.3,1 1,1" → cubic-bezier(0.16,0,0.3,1)
+  const cssBezier = "cubic-bezier(0.16, 0, 0.3, 1)";
+
+  document.querySelectorAll("[data-swiper-group]").forEach((swiperGroup) => {
+    const swiperSliderWrap = swiperGroup.querySelector("[data-swiper-wrap]");
+    if (!swiperSliderWrap) return;
+
+    const prevButton = swiperGroup.querySelector("[data-swiper-prev]");
+    const nextButton = swiperGroup.querySelector("[data-swiper-next]");
+
+    const swiper = new Swiper(swiperSliderWrap, {
+      slidesPerView: 1,
+      spaceBetween: 0,
+      speed: 600,
+      loop: true,
+      autoplay: {
+        delay: 2000,
+        disableOnInteraction: false,
+      },
+      wrapperClass: "swiper-wrapper-2",
+      slideClass: "swiper-slide-2",
+      mousewheel: true,
+      grabCursor: true,
+      navigation: {
+        nextEl: nextButton,
+        prevEl: prevButton,
+      },
+      pagination: {
+        el: swiperGroup.querySelector(".swiper-pagination"),
+        type: "bullets",
+        clickable: true,
+      },
+      keyboard: {
+        enabled: true,
+        onlyInViewport: false,
+      },
+      on: {
+        init() {
+          // Apply the same cubic-bezier used by createEase
+          this.wrapperEl.style.transitionTimingFunction = cssBezier;
+        },
+        setTransition(duration) {
+          this.wrapperEl.style.transitionDuration = `${duration}ms`;
+          this.wrapperEl.style.transitionTimingFunction = cssBezier;
+        },
+      },
     });
   });
 }
