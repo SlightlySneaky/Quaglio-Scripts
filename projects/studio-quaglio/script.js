@@ -46,11 +46,8 @@ document.addEventListener("DOMContentLoaded", () => {
   if (document.querySelector('[data-accordion-css-init]'))                       initAccordionCSS();
   if (document.querySelector('[data-draggable-marquee-init]'))                   initDraggableMarquee();
   if (document.querySelector('[data-button-animate-chars]'))                     initButtonCharacterStagger();
-<<<<<<< HEAD
-  if (document.querySelector('[form-wrap]')) initFormModal();
-=======
+  if (document.querySelector('[form-wrap]'))                                     initFormModal();
   if (document.querySelector('[data-swiper-group]'))                             initSwiperSlider();
->>>>>>> 1677796 (sync: 2026-04-18 12:45:29)
 });
 
 
