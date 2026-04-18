@@ -1008,7 +1008,7 @@ function initTestimonialSlider() {
     if (splits.profileEl) tl.to(splits.profileEl,    { opacity: 0, y: 20, scale: 0.95 }, "-=0.2");
   }
 
-  const swiper = new Swiper(swiperEl, {
+  const swiper = new Swiper(".swiper", {
     slidesPerView: 1,
     loop: true,
     speed: 600,
@@ -1435,17 +1435,6 @@ function initSwiperSlider() {
     const prevButton = swiperGroup.querySelector("[data-swiper-prev]");
     const nextButton = swiperGroup.querySelector("[data-swiper-next]");
 
-    const parallaxOffset = 60; // px image travels across the slide transition
-
-    function applyParallax(swiper) {
-      swiper.slides.forEach((slide) => {
-        const img = slide.querySelector("[data-swiper-parallax-img]");
-        if (!img) return;
-        const progress = slide.progress;
-        img.style.transform = `translateX(${progress * parallaxOffset}px)`;
-      });
-    }
-
     new Swiper(swiperSliderWrap, {
       slidesPerView: 1,
       spaceBetween: 0,
@@ -1466,21 +1455,18 @@ function initSwiperSlider() {
       },
       on: {
         init() {
+          console.log(`✅ Group ${i}: Swiper initialized — slides: ${this.slides.length}, loop: ${this.params.loop}`);
           this.wrapperEl.style.transitionTimingFunction = cssBezier;
-          applyParallax(this);
-        },
-        setTranslate() {
-          applyParallax(this);
         },
         setTransition(duration) {
           this.wrapperEl.style.transitionDuration = `${duration}ms`;
           this.wrapperEl.style.transitionTimingFunction = cssBezier;
-          this.slides.forEach((slide) => {
-            const img = slide.querySelector("[data-swiper-parallax-img]");
-            if (!img) return;
-            img.style.transitionDuration = `${duration}ms`;
-            img.style.transitionTimingFunction = cssBezier;
-          });
+        },
+        slideChange() {
+          console.log(`🔵 Group ${i}: slide changed → index ${this.realIndex}`);
+        },
+        error(err) {
+          console.error(`❌ Group ${i}: Swiper error →`, err);
         },
       },
     });
