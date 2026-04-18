@@ -33,21 +33,27 @@ document.addEventListener("DOMContentLoaded", () => {
     initLenis();
   }
 
-  if (document.querySelector('[preloader-wrap]'))                                initPreloader();
-  if (document.querySelector('[data-theme-nav="true"]'))                        initNavAnimation();
-  if (document.querySelector('[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]')) initSplitTextAndReveal();
-  if (document.querySelector('.cursor'))                                         initDynamicCustomTextCursor();
-  if (document.querySelector('[data-bunny-player-init]'))                        initBunnyPlayer();
-  if (document.querySelector('[data-video="playpause"]'))                        initPlayPauseVideoScroll();
-  if (document.querySelector('[data-parallax="trigger"]'))                       initGlobalParallax();
-  if (document.querySelector('.swiper'))                                         initTestimonialSlider();
-  if (document.querySelector('[data-sticky-title="wrap"]'))                      initStickyTitleScroll();
-  if (document.querySelector('[data-footer-parallax]'))                          initFooterParallax();
-  if (document.querySelector('[data-accordion-css-init]'))                       initAccordionCSS();
-  if (document.querySelector('[data-draggable-marquee-init]'))                   initDraggableMarquee();
-  if (document.querySelector('[data-button-animate-chars]'))                     initButtonCharacterStagger();
-  if (document.querySelector('[form-wrap]'))                                     initFormModal();
-  if (document.querySelector('[data-swiper-group="2"]'))                        initSwiperSlider();
+  function safeInit(name, selector, fn) {
+    if (selector && !document.querySelector(selector)) return;
+    try { fn(); }
+    catch (e) { console.error(`❌ ${name} failed:`, e); }
+  }
+
+  safeInit("Preloader",            '[preloader-wrap]',                                                                    initPreloader);
+  safeInit("NavAnimation",         '[data-theme-nav="true"]',                                                             initNavAnimation);
+  safeInit("SplitTextAndReveal",   '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]',               initSplitTextAndReveal);
+  safeInit("CustomCursor",         '.cursor',                                                                             initDynamicCustomTextCursor);
+  safeInit("BunnyPlayer",          '[data-bunny-player-init]',                                                            initBunnyPlayer);
+  safeInit("PlayPauseVideo",       '[data-video="playpause"]',                                                            initPlayPauseVideoScroll);
+  safeInit("GlobalParallax",       '[data-parallax="trigger"]',                                                           initGlobalParallax);
+  safeInit("TestimonialSlider",    '.swiper',                                                                             initTestimonialSlider);
+  safeInit("StickyTitleScroll",    '[data-sticky-title="wrap"]',                                                          initStickyTitleScroll);
+  safeInit("FooterParallax",       '[data-footer-parallax]',                                                              initFooterParallax);
+  safeInit("AccordionCSS",         '[data-accordion-css-init]',                                                           initAccordionCSS);
+  safeInit("DraggableMarquee",     '[data-draggable-marquee-init]',                                                       initDraggableMarquee);
+  safeInit("ButtonCharStagger",    '[data-button-animate-chars]',                                                         initButtonCharacterStagger);
+  safeInit("FormModal",            '[form-wrap]',                                                                         initFormModal);
+  safeInit("SwiperSlider",         '[data-swiper-group="2"]',                                                             initSwiperSlider);
 });
 
 
