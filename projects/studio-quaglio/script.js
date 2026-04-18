@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
   safeInit("BunnyPlayer",          '[data-bunny-player-init]',                                                            initBunnyPlayer);
   safeInit("PlayPauseVideo",       '[data-video="playpause"]',                                                            initPlayPauseVideoScroll);
   safeInit("GlobalParallax",       '[data-parallax="trigger"]',                                                           initGlobalParallax);
-  safeInit("TestimonialSlider",    '.swiper',                                                                             initTestimonialSlider);
+  safeInit("TestimonialSlider",    '[data-swiper-group="1"]',                                                            initTestimonialSlider);
   safeInit("StickyTitleScroll",    '[data-sticky-title="wrap"]',                                                          initStickyTitleScroll);
   safeInit("FooterParallax",       '[data-footer-parallax]',                                                              initFooterParallax);
   safeInit("AccordionCSS",         '[data-accordion-css-init]',                                                           initAccordionCSS);
@@ -953,7 +953,7 @@ function initGlobalParallax() {
 // TESTIMONIAL SLIDER (Swiper + SplitText)
 // ============================================
 function initTestimonialSlider() {
-  const swiperEl = document.querySelector(".swiper");
+  const swiperEl = document.querySelector('[data-swiper-group="1"] .swiper');
   const originalSlideCount = swiperEl
     ? swiperEl.querySelectorAll(".swiper-wrapper > .swiper-slide").length
     : 0;
@@ -1014,7 +1014,7 @@ function initTestimonialSlider() {
     if (splits.profileEl) tl.to(splits.profileEl,    { opacity: 0, y: 20, scale: 0.95 }, "-=0.2");
   }
 
-  const swiper = new Swiper(".swiper", {
+  const swiper = new Swiper(swiperEl, {
     slidesPerView: 1,
     loop: true,
     speed: 600,
@@ -1432,15 +1432,13 @@ function initSwiperSlider() {
       return;
     }
 
-    swiperSliderWrap.classList.add("swiper");
+    const wrapperEl = swiperSliderWrap.querySelector(".swiper-wrapper-2");
+    if (wrapperEl) wrapperEl.classList.add("swiper-wrapper");
+    swiperSliderWrap.querySelectorAll(".swiper-slide-2").forEach(s => s.classList.add("swiper-slide"));
 
     const prevButton = swiperGroup.querySelector("[data-swiper-prev]");
     const nextButton = swiperGroup.querySelector("[data-swiper-next]");
     console.log(`🔵 Group ${i}: prevButton →`, prevButton, `| nextButton →`, nextButton);
-
-    const wrapper = swiperSliderWrap.querySelector(".swiper-wrapper");
-    const slides  = swiperSliderWrap.querySelectorAll(".swiper-slide");
-    console.log(`🔵 Group ${i}: .swiper-wrapper →`, wrapper, `| slides found: ${slides.length}`);
 
     new Swiper(swiperSliderWrap, {
       slidesPerView: 1,
