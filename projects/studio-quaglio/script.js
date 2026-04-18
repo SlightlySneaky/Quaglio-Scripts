@@ -1440,18 +1440,6 @@ function initSwiperSlider() {
     const nextButton = swiperGroup.querySelector("[data-swiper-next]");
     console.log(`🔵 Group ${i}: prevButton →`, prevButton, `| nextButton →`, nextButton);
 
-    const parallaxOffset = 60;
-    function applyParallax(swiper) {
-      swiper.slides.forEach((slide, idx) => {
-        const img = slide.querySelector("[data-swiper-parallax-img]");
-        if (!img) {
-          console.warn(`⚠️ Parallax: slide ${idx} has no [data-swiper-parallax-img] element`);
-          return;
-        }
-        img.style.transform = `translateX(${slide.progress * parallaxOffset}px)`;
-      });
-    }
-
     new Swiper(swiperSliderWrap, {
       slidesPerView: 1,
       spaceBetween: 0,
@@ -1474,20 +1462,10 @@ function initSwiperSlider() {
         init() {
           console.log(`✅ Group ${i}: Swiper initialized — slides: ${this.slides.length}, loop: ${this.params.loop}`);
           this.wrapperEl.style.transitionTimingFunction = cssBezier;
-          applyParallax(this);
-        },
-        setTranslate() {
-          applyParallax(this);
         },
         setTransition(duration) {
           this.wrapperEl.style.transitionDuration = `${duration}ms`;
           this.wrapperEl.style.transitionTimingFunction = cssBezier;
-          this.slides.forEach((slide) => {
-            const img = slide.querySelector("[data-swiper-parallax-img]");
-            if (!img) return;
-            img.style.transitionDuration = `${duration}ms`;
-            img.style.transitionTimingFunction = cssBezier;
-          });
         },
         error(err) {
           console.error(`❌ Group ${i}: Swiper error →`, err);
