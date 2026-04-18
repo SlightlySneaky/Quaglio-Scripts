@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (document.querySelector('[data-bunny-player-init]'))                        initBunnyPlayer();
   if (document.querySelector('[data-video="playpause"]'))                        initPlayPauseVideoScroll();
   if (document.querySelector('[data-parallax="trigger"]'))                       initGlobalParallax();
-  if (document.querySelector('[data-swiper-group="1"]'))                        initTestimonialSlider();
+  if (document.querySelector('.swiper'))                                         initTestimonialSlider();
   if (document.querySelector('[data-sticky-title="wrap"]'))                      initStickyTitleScroll();
   if (document.querySelector('[data-footer-parallax]'))                          initFooterParallax();
   if (document.querySelector('[data-accordion-css-init]'))                       initAccordionCSS();
@@ -947,7 +947,7 @@ function initGlobalParallax() {
 // TESTIMONIAL SLIDER (Swiper + SplitText)
 // ============================================
 function initTestimonialSlider() {
-  const swiperEl = document.querySelector('[data-swiper-group="1"] .swiper');
+  const swiperEl = document.querySelector(".swiper");
   const originalSlideCount = swiperEl
     ? swiperEl.querySelectorAll(".swiper-wrapper > .swiper-slide").length
     : 0;
