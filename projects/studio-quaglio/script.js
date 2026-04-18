@@ -1442,9 +1442,12 @@ function initSwiperSlider() {
 
     const parallaxOffset = 60;
     function applyParallax(swiper) {
-      swiper.slides.forEach((slide) => {
+      swiper.slides.forEach((slide, idx) => {
         const img = slide.querySelector("[data-swiper-parallax-img]");
-        if (!img) return;
+        if (!img) {
+          console.warn(`⚠️ Parallax: slide ${idx} has no [data-swiper-parallax-img] element`);
+          return;
+        }
         img.style.transform = `translateX(${slide.progress * parallaxOffset}px)`;
       });
     }
@@ -1485,9 +1488,6 @@ function initSwiperSlider() {
             img.style.transitionDuration = `${duration}ms`;
             img.style.transitionTimingFunction = cssBezier;
           });
-        },
-        slideChange() {
-          console.log(`🔵 Group ${i}: slide changed → index ${this.realIndex}`);
         },
         error(err) {
           console.error(`❌ Group ${i}: Swiper error →`, err);
