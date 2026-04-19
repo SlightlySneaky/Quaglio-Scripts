@@ -57,6 +57,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-hero-parallax]')) initHeroParallax();
   if (has('.popup_form')) initFormPopup();
   if (has('[data-slideshow="wrap"]')) initFadeScaleSlideshows();
+  if (has('.team-item')) initTeamHover();
 
   if (hasLenis) {
     lenis.resize();
@@ -639,5 +640,25 @@ function initFadeScaleSlideshows(scope = document) {
 
   });
 
+}
+
+// -----------------------------------------
+// TEAM HOVER
+// -----------------------------------------
+function initTeamHover() {
+  nextPage.querySelectorAll(".team-item").forEach((item) => {
+    const img = item.querySelector(".img.is-second");
+    if (!img) return;
+
+    gsap.set(img, { opacity: 0 });
+
+    item.addEventListener("mouseenter", () => {
+      gsap.to(img, { opacity: 1, duration: 0.4, ease: "osmo" });
+    });
+
+    item.addEventListener("mouseleave", () => {
+      gsap.to(img, { opacity: 0, duration: 0.4, ease: "osmo" });
+    });
+  });
 }
 
