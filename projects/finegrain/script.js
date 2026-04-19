@@ -650,15 +650,11 @@ function initTeamHover() {
     const img = item.querySelector(".img.is-second");
     if (!img) return;
 
-    gsap.set(img, { opacity: 0 });
+    const tl = gsap.timeline({ paused: true })
+      .fromTo(img, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "osmo" });
 
-    item.addEventListener("mouseenter", () => {
-      gsap.to(img, { opacity: 1, duration: 0.4, ease: "osmo" });
-    });
-
-    item.addEventListener("mouseleave", () => {
-      gsap.to(img, { opacity: 0, duration: 0.4, ease: "osmo" });
-    });
+    item.addEventListener("mouseenter", () => tl.play());
+    item.addEventListener("mouseleave", () => tl.reverse());
   });
 }
 
