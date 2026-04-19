@@ -651,7 +651,7 @@ function initTeamHover() {
     if (!img) return;
 
     const tl = gsap.timeline({ paused: true })
-      .fromTo(img, { opacity: 0 }, { opacity: 1, duration: 1.2, ease: "osmo" });
+      .fromTo(img, { opacity: 0 }, { opacity: 1, duration: 2, ease: "osmo" });
 
     item.addEventListener("mouseenter", () => tl.play());
     item.addEventListener("mouseleave", () => tl.reverse());
