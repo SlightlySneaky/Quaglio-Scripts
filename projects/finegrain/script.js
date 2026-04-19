@@ -23,7 +23,7 @@ const has = (s) => !!nextPage.querySelector(s);
 let staggerDefault = 0.05;
 let durationDefault = 0.6;
 
-CustomEase.create("osmo", "0.625, 0.05, 0, 1");
+CustomEase.create("osmo", "M0,0 C0.625,0.05 0,1 1,1");
 gsap.defaults({ ease: "osmo", duration: durationDefault });
 
 // -----------------------------------------
