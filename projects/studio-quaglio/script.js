@@ -1361,14 +1361,11 @@ function initFormModal() {
   if (!inner) { console.error("❌ Form modal: [form-inner] not found inside [form-wrap]"); return; }
   if (!bg)    { console.error("❌ Form modal: [form-bg] not found inside [form-wrap]"); return; }
 
-  console.log(`Form modal elements found — openers: ${openers.length}, wrap:`, wrap, "inner:", inner, "bg:", bg);
-
   gsap.set(wrap,  { display: "flex", autoAlpha: 0, pointerEvents: "none" });
   gsap.set(bg,    { autoAlpha: 0 });
   gsap.set(inner, { x: "100%" });
 
   function openForm() {
-    console.log("Form modal: open triggered");
     gsap.set(wrap, { autoAlpha: 1, pointerEvents: "auto" });
     const tl = gsap.timeline();
     tl.to(bg, { autoAlpha: 1, duration: 0.5, ease: "osmo" }, 0)
@@ -1438,15 +1435,9 @@ function initSwiperSlider() {
   const cssBezier = "cubic-bezier(0.16, 0, 0.3, 1)";
 
   const groups = document.querySelectorAll('[data-swiper-group="2"]');
-  console.log(`🔵 initSwiperSlider: found ${groups.length} group(s)`);
-
   groups.forEach((swiperGroup, i) => {
     const swiperSliderWrap = swiperGroup.querySelector("[data-swiper-wrap]");
-    console.log(`🔵 Group ${i}: wrap element →`, swiperSliderWrap);
-    if (!swiperSliderWrap) {
-      console.warn(`⚠️ Group ${i}: no [data-swiper-wrap] found, skipping`);
-      return;
-    }
+    if (!swiperSliderWrap) return;
 
     const wrapperEl = swiperSliderWrap.querySelector(".swiper-wrapper-2");
     if (wrapperEl) wrapperEl.classList.add("swiper-wrapper");
@@ -1454,7 +1445,6 @@ function initSwiperSlider() {
 
     const prevButton = swiperGroup.querySelector("[data-swiper-prev]");
     const nextButton = swiperGroup.querySelector("[data-swiper-next]");
-    console.log(`🔵 Group ${i}: prevButton →`, prevButton, `| nextButton →`, nextButton);
 
     new Swiper(swiperSliderWrap, {
       slidesPerView: 1,
@@ -1476,7 +1466,6 @@ function initSwiperSlider() {
       },
       on: {
         init() {
-          console.log(`✅ Group ${i}: Swiper initialized — slides: ${this.slides.length}, loop: ${this.params.loop}`);
           this.wrapperEl.style.transitionTimingFunction = cssBezier;
         },
         setTransition(duration) {
