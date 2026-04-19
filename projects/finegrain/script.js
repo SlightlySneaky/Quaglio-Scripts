@@ -647,7 +647,7 @@ function initFadeScaleSlideshows(scope = document) {
 // -----------------------------------------
 function initTeamHover() {
   nextPage.querySelectorAll(".team-item").forEach((item) => {
-    const img = item.querySelector(".img.is-second");
+    const img = item.querySelector(".img-team-top");
     if (!img) return;
 
     const tl = gsap.timeline({ paused: true })
