@@ -6,12 +6,28 @@
 })();
 
 // ============================================
+// EASES
+// Rule: all animations must use one of these named eases.
+// Default: "osmo". Do not use GSAP built-in eases (power, expo, etc.).
+// ============================================
+gsap.registerPlugin(CustomEase);
+CustomEase.create("reveal",    "M0,0 C0.16,1 0.3,1 1,1");
+CustomEase.create("osmo",      "M0,0 C0.625,0.05 0,1 1,1");
+CustomEase.create("energy",    "M0,0 C0.32,0.72 0,1 1,1");
+CustomEase.create("smooth",    "M0,0 C0.38,0.005 0.215,1 1,1");
+CustomEase.create("punch",     "M0,0 C0.19,1 0.22,1 1,1");
+CustomEase.create("relaxed",   "M0,0 C0.7,0 0.3,1 1,1");
+CustomEase.create("expo.inOut","M0,0 C0.87,0 0.13,1 1,1");
+CustomEase.create("jump",      "M0,0 C0.35,1.5 0.6,1 1,1");
+CustomEase.create("pop",       "M0,0 C0.17,0.67 0.3,1.33 1,1");
+
+// ============================================
 // SHARED
 // ============================================
 function createEase(name) {
   return typeof CustomEase !== "undefined"
-    ? CustomEase.create(name, "M0,0 C0.16,0 0.3,1 1,1")
-    : "expo.out";
+    ? CustomEase.create(name, "M0,0 C0.625,0.05 0,1 1,1")
+    : "osmo";
 }
 
 // ============================================
@@ -96,13 +112,13 @@ function initPreloader() {
 
   for (let i = 0; i < imgs.length - 1; i++) {
     const dur = getDur(i);
-    tl.to(imgs[i],     { clipPath: "inset(0% 0% 100% 0%)", duration: dur, ease: "power2.inOut" }, ">");
+    tl.to(imgs[i],     { clipPath: "inset(0% 0% 100% 0%)", duration: dur, ease: "expo.inOut" }, ">");
     tl.to(imgs[i + 1], { clipPath: "inset(0% 0% 0% 0%)",   duration: dur, ease },                 "<");
     if (innerImgs[i + 1]) tl.to(innerImgs[i + 1], { scale: 1, duration: dur, ease },              "<");
     tl.set(imgs[i], { display: "none" });
   }
 
-  tl.to(imgs[imgs.length - 1], { clipPath: "inset(0% 0% 100% 0%)", duration: 1.2, ease: "power2.inOut" }, ">");
+  tl.to(imgs[imgs.length - 1], { clipPath: "inset(0% 0% 100% 0%)", duration: 1.2, ease: "expo.inOut" }, ">");
   tl.set(imgs, { display: "none" });
 
   if (textEl && typeof SplitText !== "undefined") {
@@ -118,7 +134,7 @@ function initPreloader() {
     .to(wrap, {
       autoAlpha: 0,
       duration: 0.7,
-      ease: "power2.inOut",
+      ease: "expo.inOut",
       onComplete() {
         gsap.set(wrap, { display: "none" });
         animateHeroText();
@@ -266,7 +282,7 @@ function initSplitTextAndReveal() {
           yPercent: 0,
           autoAlpha: 1,
           duration: 0.8,
-          ease: "power3.out",
+          ease: "osmo",
           stagger: { each: 0.02, from: "start" },
           delay: delayAttr
         });
@@ -304,7 +320,7 @@ function initSplitTextAndReveal() {
           yPercent: 0,
           autoAlpha: 1,
           duration: 0.9,
-          ease: "power3.out",
+          ease: "osmo",
           stagger: { each: 0.08, from: "start" },
           delay: delayAttr
         });
@@ -337,7 +353,7 @@ function initSplitTextAndReveal() {
       tl.to(block, {
         clipPath: "inset(0 0% 0 0)",
         duration: 1,
-        ease: "power3.out",
+        ease: "osmo",
         delay: delayAttr
       });
     });
@@ -365,8 +381,8 @@ function initDynamicCustomTextCursor() {
   gsap.set(cursorItem, { xPercent: xOffset, yPercent: yOffset });
 
   // Use GSAP quickTo for a more performative tween on the cursor
-  let xTo = gsap.quickTo(cursorItem, "x", { ease: "power3" });
-  let yTo = gsap.quickTo(cursorItem, "y", { ease: "power3" });
+  let xTo = gsap.quickTo(cursorItem, "x", { ease: "osmo" });
+  let yTo = gsap.quickTo(cursorItem, "y", { ease: "osmo" });
 
   // Get the width of the cursor element including a buffer
   const getCursorEdgeThreshold = () => {
@@ -404,7 +420,7 @@ function initDynamicCustomTextCursor() {
       }
     }
 
-    gsap.to(cursorItem, { xPercent: xPercent, yPercent: yPercent, duration: 0.9, ease: "power3" });
+    gsap.to(cursorItem, { xPercent: xPercent, yPercent: yPercent, duration: 0.9, ease: "osmo" });
     xTo(cursorX);
     yTo(cursorY - scrollY);
   });
@@ -995,7 +1011,7 @@ function initTestimonialSlider() {
     if (!splits) return;
     const targets = [splits.profileEl, splits.quote?.words, splits.name?.chars, splits.role?.words].filter(Boolean);
     gsap.killTweensOf(targets);
-    const tl = gsap.timeline({ defaults: { duration: 0.6, ease: "power3.out" } });
+    const tl = gsap.timeline({ defaults: { duration: 0.6, ease: "osmo" } });
     if (splits.profileEl) tl.fromTo(splits.profileEl, { opacity: 0, y: 20, scale: 0.95 }, { opacity: 1, y: 0, scale: 1 }, 0);
     if (splits.quote)     tl.fromTo(splits.quote.words,  { opacity: 0, y: 30 }, { opacity: 1, y: 0, stagger: 0.02 }, 0.05);
     if (splits.name)      tl.fromTo(splits.name.chars,   { opacity: 0, y: 10 }, { opacity: 1, y: 0, stagger: 0.01 }, "-=0.3");
@@ -1007,7 +1023,7 @@ function initTestimonialSlider() {
     if (!splits) return;
     const targets = [splits.profileEl, splits.quote?.words, splits.name?.chars, splits.role?.words].filter(Boolean);
     gsap.killTweensOf(targets);
-    const tl = gsap.timeline({ defaults: { duration: 0.5, ease: "power3.in" } });
+    const tl = gsap.timeline({ defaults: { duration: 0.5, ease: "energy" } });
     if (splits.role)      tl.to(splits.role.words,  { opacity: 0, y: 10, stagger: { each: 0.03, from: "end" } }, 0);
     if (splits.name)      tl.to(splits.name.chars,   { opacity: 0, y: 10, stagger: { each: 0.01, from: "end" } }, 0.05);
     if (splits.quote)     tl.to(splits.quote.words,  { opacity: 0, y: 30, stagger: { each: 0.02, from: "end" } }, 0.1);
@@ -1355,16 +1371,16 @@ function initFormModal() {
     console.log("Form modal: open triggered");
     gsap.set(wrap, { autoAlpha: 1, pointerEvents: "auto" });
     const tl = gsap.timeline();
-    tl.to(bg, { autoAlpha: 1, duration: 0.5, ease: "power2.out" }, 0)
-      .to(inner, { x: "0%", duration: 0.65, ease: "power3.out" }, "-=0.15");
+    tl.to(bg, { autoAlpha: 1, duration: 0.5, ease: "osmo" }, 0)
+      .to(inner, { x: "0%", duration: 0.65, ease: "osmo" }, "-=0.15");
   }
 
   function closeForm() {
     const tl = gsap.timeline({
       onComplete: () => gsap.set(wrap, { autoAlpha: 0, pointerEvents: "none" }),
     });
-    tl.to(inner, { x: "100%", duration: 0.5, ease: "power3.in" }, 0)
-      .to(bg, { autoAlpha: 0, duration: 0.4, ease: "power2.in" }, 0.1);
+    tl.to(inner, { x: "100%", duration: 0.5, ease: "energy" }, 0)
+      .to(bg, { autoAlpha: 0, duration: 0.4, ease: "energy" }, 0.1);
   }
 
   openers.forEach((el) => el.addEventListener("click", openForm));
