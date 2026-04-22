@@ -1589,37 +1589,59 @@ function initSwiperSlider() {
       observer.observe(el, { attributes: true, attributeFilter: ['style', 'class'] });
     });
 
-    // Diagnostic: log SuperForm's internal $v state when any input changes
-    function logSfScores() {
-      // Try common SuperForm global references
-      const sf = window.$sf || window.sf || window.SuperForm || window.superform;
-      if (sf && sf.$v) {
-        console.log('🎯 SuperForm $v state:', JSON.parse(JSON.stringify(sf.$v)));
-        return;
-      }
-      // Fallback: find any element with sf-score and read its Alpine/SF component state
-      const sfEl = document.querySelector('[sf-score]');
-      if (sfEl && sfEl.__sf) {
-        console.log('🎯 SF component state:', sfEl.__sf);
-        return;
-      }
-      // Fallback: log all sf-react elements and their current text so we can see what's updating
-      const reactEls = document.querySelectorAll('[sf-react]');
-      if (reactEls.length) {
-        const vals = {};
-        reactEls.forEach(el => { vals[el.getAttribute('sf-react')] = el.textContent; });
-        console.log('🎯 sf-react values:', vals);
-        return;
-      }
-      console.warn('⚠️ Could not find SuperForm $v state. Check window.$sf, window.sf, or add sf-react elements.');
+    // Diagnostic: log on every radio click — what fired vs what the scores show after
+    function readScoreHolders() {
+      const names = ['total', 'reputation', 'buyer', 'proof', 'inbound'];
+      const out = {};
+      names.forEach(n => {
+        const el = document.querySelector('[data-score-holder="' + n + '"]');
+        out[n] = el ? el.textContent.trim() : '(missing element)';
+      });
+      return out;
     }
 
-    // Watch for any input/change inside the form to log scores per question
-    const formEl = document.querySelector('[sf-form]') || document.querySelector('form');
-    if (formEl) {
-      formEl.addEventListener('change', () => setTimeout(logSfScores, 50));
-      formEl.addEventListener('click',  () => setTimeout(logSfScores, 50));
-    }
+    document.addEventListener('click', function(e) {
+      const label = e.target.closest('[sf-score-calc]');
+      if (!label) return;
+
+      const calc   = label.getAttribute('sf-score-calc');
+      const input  = label.querySelector('input[type="radio"], input[type="checkbox"]');
+      const qName  = input ? (input.getAttribute('name') || input.getAttribute('data-name') || '?') : '?';
+      const answer = input ? input.value : '?';
+
+      console.group('🖱️ Answer clicked — ' + qName + ': ' + answer);
+      console.log('sf-score-calc:', calc);
+
+      // Read scores before SF processes (immediate) and after (delayed)
+      console.log('Scores BEFORE:', readScoreHolders());
+      setTimeout(function() {
+        console.log('Scores AFTER: ', readScoreHolders());
+        console.groupEnd();
+      }, 300);
+    }, true);
+
+    // Also warn about any answer labels missing sf-score-calc
+    setTimeout(function() {
+      const allLabels = document.querySelectorAll('[sf-step] .radio_button');
+      const missing = [];
+      allLabels.forEach(function(label) {
+        if (!label.hasAttribute('sf-score-calc')) {
+          const input = label.querySelector('input');
+          missing.push((input ? input.getAttribute('name') + '=' + input.value : label.id) + ' (id: ' + label.id + ')');
+        }
+      });
+      if (missing.length) {
+        console.warn('⚠️ Labels missing sf-score-calc (' + missing.length + '):', missing);
+      } else {
+        console.log('✅ All answer labels have sf-score-calc');
+      }
+
+      // Also warn if the form appears duplicated
+      const sfForms = document.querySelectorAll('[sf-score]');
+      if (sfForms.length > 1) {
+        console.warn('⚠️ Found ' + sfForms.length + ' elements with [sf-score] — SuperForm may only initialise the first one. Check for duplicate form embeds in Webflow.');
+      }
+    }, 500);
   }
   
   if (document.readyState === 'loading') {
