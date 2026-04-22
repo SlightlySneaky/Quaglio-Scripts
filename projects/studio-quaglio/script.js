@@ -965,7 +965,6 @@ function initGlobalParallax() {
 }
 
 
-// ============================================
 // TESTIMONIAL SLIDER (Swiper + SplitText)
 // ============================================
 function initTestimonialSlider() {
@@ -1061,7 +1060,6 @@ function initTestimonialSlider() {
 }
 
 
-// ============================================
 // SCROLL TEXT CHANGE
 // ============================================
 function initStickyTitleScroll() {
@@ -1103,7 +1101,6 @@ function initStickyTitleScroll() {
 }
 
 
-// ============================================
 // FOOTER PARALLAX
 // ============================================
 function initFooterParallax() {
@@ -1126,7 +1123,6 @@ function initFooterParallax() {
 }
 
 
-// ============================================
 // ACCORDION CSS
 // ============================================
 function initAccordionCSS() {
@@ -1149,7 +1145,6 @@ function initAccordionCSS() {
 }
 
 
-// ============================================
 // TIMEZONE NAV
 // ============================================
 (() => {
@@ -1167,7 +1162,6 @@ function initAccordionCSS() {
 })();
 
 
-// ============================================
 // SVG FILL LOOP
 // ============================================
 (() => {
@@ -1256,7 +1250,6 @@ function initAccordionCSS() {
 })();
 
 
-// ============================================
 // DRAGGABLE MARQUEE ([data-draggable-marquee-init])
 // ============================================
 function initDraggableMarquee() {
@@ -1346,7 +1339,6 @@ function initDraggableMarquee() {
 }
 
 
-// ============================================
 // Form modal ([form-open] / [form-wrap])
 // ============================================
 
@@ -1399,7 +1391,6 @@ function initFormModal() {
 }
 
 
-// ============================================
 // BUTTON CHARACTER STAGGER ([data-button-animate-chars])
 // ============================================
 function initButtonCharacterStagger() {
@@ -1426,7 +1417,6 @@ function initButtonCharacterStagger() {
 }
 
 
-// ============================================
 // SWIPER SLIDER ([data-swiper-group])
 // Uses swiper-2 / swiper-wrapper-2 / swiper-slide-2 classes
 // to avoid conflicting with the testimonial swiper
@@ -1481,7 +1471,6 @@ function initSwiperSlider() {
 }
 
 
-// ============================================
 // CHART JS 
 // ============================================
 
@@ -1529,7 +1518,13 @@ function initSwiperSlider() {
       proof:      Math.round((scores.proof      / 4)  * 100),
       inbound:    Math.round((scores.inbound    / 4)  * 100)
     };
-    
+
+    console.group('📊 Quiz Results');
+    console.log('Raw scores:',  scores);
+    console.log('Percentages:', pct);
+    console.log('Result step:', activeStep.getAttribute('sf-step'));
+    console.groupEnd();
+
     // Update centre total %
     const centreEl = activeStep.querySelector('.chart-total-pct');
     if (centreEl) centreEl.textContent = pct.total + '%';
@@ -1583,15 +1578,37 @@ function initSwiperSlider() {
       setTimeout(startWatching, 200);
       return;
     }
-    
+
     const observer = new MutationObserver(() => {
       // Debounce
       clearTimeout(window._resultRenderTimer);
       window._resultRenderTimer = setTimeout(renderResults, 150);
     });
-    
+
     stepEls.forEach(el => {
       observer.observe(el, { attributes: true, attributeFilter: ['style', 'class'] });
+    });
+
+    // Per-question score logging: watch score holder elements for changes
+    const scoreNames = ['total', 'reputation', 'buyer', 'proof', 'inbound'];
+    const scoreObserver = new MutationObserver(() => {
+      const current = {};
+      scoreNames.forEach(name => {
+        const el = document.querySelector('[data-score-holder="' + name + '"]');
+        current[name] = el ? parseInt(el.textContent, 10) || 0 : 0;
+      });
+      console.log('🎯 Score update →', {
+        total:      current.total + '/16 (' + Math.round((current.total / 16) * 100) + '%)',
+        reputation: current.reputation + '/4 (' + Math.round((current.reputation / 4) * 100) + '%)',
+        buyer:      current.buyer + '/4 (' + Math.round((current.buyer / 4) * 100) + '%)',
+        proof:      current.proof + '/4 (' + Math.round((current.proof / 4) * 100) + '%)',
+        inbound:    current.inbound + '/4 (' + Math.round((current.inbound / 4) * 100) + '%)',
+      });
+    });
+
+    scoreNames.forEach(name => {
+      const el = document.querySelector('[data-score-holder="' + name + '"]');
+      if (el) scoreObserver.observe(el, { childList: true, characterData: true, subtree: true });
     });
   }
   
