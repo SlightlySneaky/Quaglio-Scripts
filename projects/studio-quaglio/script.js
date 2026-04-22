@@ -1589,27 +1589,37 @@ function initSwiperSlider() {
       observer.observe(el, { attributes: true, attributeFilter: ['style', 'class'] });
     });
 
-    // Per-question score logging: watch score holder elements for changes
-    const scoreNames = ['total', 'reputation', 'buyer', 'proof', 'inbound'];
-    const scoreObserver = new MutationObserver(() => {
-      const current = {};
-      scoreNames.forEach(name => {
-        const el = document.querySelector('[data-score-holder="' + name + '"]');
-        current[name] = el ? parseInt(el.textContent, 10) || 0 : 0;
-      });
-      console.log('🎯 Score update →', {
-        total:      current.total + '/16 (' + Math.round((current.total / 16) * 100) + '%)',
-        reputation: current.reputation + '/4 (' + Math.round((current.reputation / 4) * 100) + '%)',
-        buyer:      current.buyer + '/4 (' + Math.round((current.buyer / 4) * 100) + '%)',
-        proof:      current.proof + '/4 (' + Math.round((current.proof / 4) * 100) + '%)',
-        inbound:    current.inbound + '/4 (' + Math.round((current.inbound / 4) * 100) + '%)',
-      });
-    });
+    // Diagnostic: log SuperForm's internal $v state when any input changes
+    function logSfScores() {
+      // Try common SuperForm global references
+      const sf = window.$sf || window.sf || window.SuperForm || window.superform;
+      if (sf && sf.$v) {
+        console.log('🎯 SuperForm $v state:', JSON.parse(JSON.stringify(sf.$v)));
+        return;
+      }
+      // Fallback: find any element with sf-score and read its Alpine/SF component state
+      const sfEl = document.querySelector('[sf-score]');
+      if (sfEl && sfEl.__sf) {
+        console.log('🎯 SF component state:', sfEl.__sf);
+        return;
+      }
+      // Fallback: log all sf-react elements and their current text so we can see what's updating
+      const reactEls = document.querySelectorAll('[sf-react]');
+      if (reactEls.length) {
+        const vals = {};
+        reactEls.forEach(el => { vals[el.getAttribute('sf-react')] = el.textContent; });
+        console.log('🎯 sf-react values:', vals);
+        return;
+      }
+      console.warn('⚠️ Could not find SuperForm $v state. Check window.$sf, window.sf, or add sf-react elements.');
+    }
 
-    scoreNames.forEach(name => {
-      const el = document.querySelector('[data-score-holder="' + name + '"]');
-      if (el) scoreObserver.observe(el, { childList: true, characterData: true, subtree: true });
-    });
+    // Watch for any input/change inside the form to log scores per question
+    const formEl = document.querySelector('[sf-form]') || document.querySelector('form');
+    if (formEl) {
+      formEl.addEventListener('change', () => setTimeout(logSfScores, 50));
+      formEl.addEventListener('click',  () => setTimeout(logSfScores, 50));
+    }
   }
   
   if (document.readyState === 'loading') {
