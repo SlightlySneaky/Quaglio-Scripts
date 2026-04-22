@@ -1479,3 +1479,125 @@ function initSwiperSlider() {
     });
   });
 }
+
+
+// ============================================
+// CHART JS 
+// ============================================
+
+(function() {
+  let chartInstance = null;
+  
+  // Colour for each band
+  function colourFor(score) {
+    if (score <= 1) return '#C8342B';   // low  — red
+    if (score <= 3) return '#E87A3A';   // med  — orange
+    return '#4A9E5C';                   // high — green
+  }
+  
+  function renderResults() {
+    // Find the currently visible result step
+    const resultSteps = ['resultMisjudged', 'resultMisaligned', 'resultAligned'];
+    let activeStep = null;
+    for (const name of resultSteps) {
+      const el = document.querySelector('[sf-step="' + name + '"]');
+      if (el && window.getComputedStyle(el).display !== 'none') {
+        activeStep = el;
+        break;
+      }
+    }
+    if (!activeStep) return;
+    
+    // Read raw scores from the DOM (we'll add hidden data holders below)
+    const getScore = (name) => {
+      const el = document.querySelector('[data-score-holder="' + name + '"]');
+      return el ? parseInt(el.textContent, 10) || 0 : 0;
+    };
+    
+    const scores = {
+      total:      getScore('total'),
+      reputation: getScore('reputation'),
+      buyer:      getScore('buyer'),
+      proof:      getScore('proof'),
+      inbound:    getScore('inbound')
+    };
+    
+    const pct = {
+      total:      Math.round((scores.total      / 16) * 100),
+      reputation: Math.round((scores.reputation / 4)  * 100),
+      buyer:      Math.round((scores.buyer      / 4)  * 100),
+      proof:      Math.round((scores.proof      / 4)  * 100),
+      inbound:    Math.round((scores.inbound    / 4)  * 100)
+    };
+    
+    // Update centre total %
+    const centreEl = activeStep.querySelector('.chart-total-pct');
+    if (centreEl) centreEl.textContent = pct.total + '%';
+    
+    // Update each category percentage
+    ['reputation', 'buyer', 'proof', 'inbound'].forEach(cat => {
+      const el = activeStep.querySelector('[data-category="' + cat + '"]');
+      if (el) el.textContent = pct[cat];
+    });
+    
+    // Render donut
+    const canvas = activeStep.querySelector('.result-donut');
+    if (!canvas || typeof Chart === 'undefined') return;
+    
+    if (chartInstance) chartInstance.destroy();
+    
+    chartInstance = new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: ['Reputation vs Reality', 'Buyer Recognition', 'Proof & Credibility', 'Inbound Quality'],
+        datasets: [{
+          data: [pct.reputation, pct.buyer, pct.proof, pct.inbound],
+          backgroundColor: [
+            colourFor(scores.reputation),
+            colourFor(scores.buyer),
+            colourFor(scores.proof),
+            colourFor(scores.inbound)
+          ],
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        cutout: '70%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ctx.label + ': ' + ctx.parsed + '%'
+            }
+          }
+        }
+      }
+    });
+  }
+  
+  // Watch for step changes via MutationObserver on the step elements
+  function startWatching() {
+    const stepEls = document.querySelectorAll('[sf-step^="result"]');
+    if (stepEls.length === 0) {
+      setTimeout(startWatching, 200);
+      return;
+    }
+    
+    const observer = new MutationObserver(() => {
+      // Debounce
+      clearTimeout(window._resultRenderTimer);
+      window._resultRenderTimer = setTimeout(renderResults, 150);
+    });
+    
+    stepEls.forEach(el => {
+      observer.observe(el, { attributes: true, attributeFilter: ['style', 'class'] });
+    });
+  }
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startWatching);
+  } else {
+    startWatching();
+  }
+})();
