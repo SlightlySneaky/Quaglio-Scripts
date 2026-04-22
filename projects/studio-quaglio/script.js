@@ -1636,10 +1636,24 @@ function initSwiperSlider() {
         console.log('✅ All answer labels have sf-score-calc');
       }
 
-      // Also warn if the form appears duplicated
+      // Check for duplicate forms — this breaks SuperForm scoring
       const sfForms = document.querySelectorAll('[sf-score]');
       if (sfForms.length > 1) {
-        console.warn('⚠️ Found ' + sfForms.length + ' elements with [sf-score] — SuperForm may only initialise the first one. Check for duplicate form embeds in Webflow.');
+        console.error(
+          '🚨 DUPLICATE FORM: Found ' + sfForms.length + ' elements with [sf-score="..."] on the page.\n' +
+          'This is why scores stay at 0. SuperForm can only manage one instance of each named form.\n' +
+          'FIX: Remove the duplicate form embed in Webflow. You likely have the component on the page twice.'
+        );
+      } else {
+        console.log('✅ Only one [sf-score] form found — no duplicate issue');
+      }
+
+      // Check if sf-score-calc is on labels vs inputs (SuperForm may need it on the input)
+      const calcOnLabels = document.querySelectorAll('label[sf-score-calc]');
+      const calcOnInputs = document.querySelectorAll('input[sf-score-calc]');
+      console.log('sf-score-calc placement: ' + calcOnLabels.length + ' on <label>, ' + calcOnInputs.length + ' on <input>');
+      if (calcOnLabels.length > 0 && calcOnInputs.length === 0) {
+        console.warn('⚠️ sf-score-calc is on <label> elements, not <input> elements. If scores stay 0, try moving sf-score-calc to the <input> inside each label.');
       }
     }, 500);
   }
