@@ -635,7 +635,7 @@ function initFooterParallax() {
       });
       const inner = el.querySelector('[data-footer-parallax-inner]');
       const dark  = el.querySelector('[data-footer-parallax-dark]');
-      if (inner) tl.from(inner, { yPercent: -25, ease: 'linear' });
+      if (inner) tl.from(inner, { yPercent: -15, ease: 'linear' });
       if (dark)  tl.from(dark,  { opacity: 0.5, ease: 'linear' }, '<');
     });
   });
