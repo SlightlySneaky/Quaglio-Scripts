@@ -628,8 +628,9 @@ function initFooterParallax() {
         scrollTrigger: {
           trigger: el,
           start: 'clamp(top bottom)',
-          end: 'clamp(top top)',
-          scrub: true
+          end: 'clamp(bottom bottom)',
+          scrub: true,
+          invalidateOnRefresh: true,
         }
       });
       const inner = el.querySelector('[data-footer-parallax-inner]');
