@@ -147,7 +147,7 @@ function animateHeroText() {
 
   gsap.utils.toArray("[split-body][hero]").forEach((el) => {
     const split = SplitText.create(el, {
-      type: "lines", mask: "lines", maskClass: "line-mask", linesClass: "is-split-line", autoSplit: true,
+      type: "lines", mask: "lines", maskClass: "line-mask", linesClass: "is-split-line",
     });
     gsap.set(split.lines, { yPercent: 120, autoAlpha: 0 });
     el.style.visibility = "visible";
@@ -156,7 +156,7 @@ function animateHeroText() {
 
   gsap.utils.toArray("[split-heading][hero]").forEach((el) => {
     const split = SplitText.create(el, {
-      type: "chars,words", mask: "chars", maskClass: "char-mask", charsClass: "is-split-char", autoSplit: true,
+      type: "chars,words", mask: "chars", maskClass: "char-mask", charsClass: "is-split-char",
     });
     gsap.set(split.chars, { yPercent: 120, autoAlpha: 0 });
     el.style.visibility = "visible";
