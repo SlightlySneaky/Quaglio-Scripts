@@ -198,7 +198,10 @@ function createRevealTimeline(container) {
       el._split = null;
     }
 
-    const split = new SplitText(el, { type: "lines" });
+    // Replace <br> tags with spaces so SplitText doesn't create empty line divs
+    el.querySelectorAll("br").forEach(br => br.replaceWith(" "));
+
+    const split = new SplitText(el, { type: "lines", mask: "lines" });
     el._split = split;
 
     gsap.set(split.lines, {
@@ -212,7 +215,7 @@ function createRevealTimeline(container) {
       duration: 0.8,
       stagger: 0.08,
       ease: "power3.out",
-      clearProps: "all"
+      onComplete() { split.revert(); el._split = null; }
     }, 0.25);
   });
 
