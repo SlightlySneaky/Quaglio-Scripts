@@ -198,7 +198,12 @@ function createRevealTimeline(container) {
       el._split = null;
     }
 
-    // Replace <br> tags with spaces so SplitText doesn't create empty line divs
+    // Strip zero-width joiners (Webflow's line-break trick) so SplitText doesn't create empty line divs
+    el.childNodes.forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        node.textContent = node.textContent.replace(/\u200D/g, "");
+      }
+    });
     el.querySelectorAll("br").forEach(br => br.replaceWith(" "));
 
     const split = new SplitText(el, { type: "lines", mask: "lines" });
