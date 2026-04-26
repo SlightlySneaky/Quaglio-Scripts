@@ -525,6 +525,8 @@ function initBarbaNavUpdate(data) {
 // -----------------------------------------
 
 function initFooterParallax() {
+  if (window.matchMedia("(max-width: 991px)").matches) return;
+
   document.querySelectorAll("[data-footer-parallax]").forEach(el => {
     const inner = el.querySelector("[data-footer-parallax-inner]");
     const dark = el.querySelector("[data-footer-parallax-dark]");
@@ -1131,6 +1133,8 @@ function initProductFloatHover() {
 }
 
 function initHeroParallax() {
+  if (window.matchMedia("(max-width: 991px)").matches) return;
+
   document.querySelectorAll("[data-hero-parallax]").forEach(el => {
     const inner = el.querySelector("[data-hero-parallax-inner]");
     const dark = el.querySelector("[data-hero-parallax-dark]");
