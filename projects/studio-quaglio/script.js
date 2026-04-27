@@ -996,27 +996,17 @@ function initSwiperSlider() {
 (function() {
   let chartInstance = null;
   
-  // Colour for each band
   function colourFor(score) {
-    if (score <= 1) return '#C8342B';   // low  — red
-    if (score <= 3) return '#E87A3A';   // med  — orange
-    return '#4A9E5C';                   // high — green
+    if (score <= 1) return '#C8342B';
+    if (score <= 3) return '#E87A3A';
+    return '#4A9E5C';
   }
   
   function renderResults() {
-    // Find the currently visible result step
-    const resultSteps = ['resultMisjudged', 'resultMisaligned', 'resultAligned'];
-    let activeStep = null;
-    for (const name of resultSteps) {
-      const el = document.querySelector('[sf-step="' + name + '"]');
-      if (el && window.getComputedStyle(el).display !== 'none') {
-        activeStep = el;
-        break;
-      }
-    }
-    if (!activeStep) return;
+    const resultStep = document.querySelector('[sf-step="result"]');
+    if (!resultStep) return;
+    if (window.getComputedStyle(resultStep).display === 'none') return;
     
-    // Read raw scores from the DOM (we'll add hidden data holders below)
     const getScore = (name) => {
       const el = document.querySelector('[data-score-holder="' + name + '"]');
       return el ? parseInt(el.textContent, 10) || 0 : 0;
@@ -1031,31 +1021,22 @@ function initSwiperSlider() {
     };
     
     const pct = {
-      total:      Math.round((scores.total      / 16) * 100),
-      reputation: Math.round((scores.reputation / 4)  * 100),
-      buyer:      Math.round((scores.buyer      / 4)  * 100),
-      proof:      Math.round((scores.proof      / 4)  * 100),
-      inbound:    Math.round((scores.inbound    / 4)  * 100)
+      total:      Math.round((scores.total / 16) * 100),
+      reputation: Math.round((scores.reputation / 4) * 100),
+      buyer:      Math.round((scores.buyer / 4) * 100),
+      proof:      Math.round((scores.proof / 4) * 100),
+      inbound:    Math.round((scores.inbound / 4) * 100)
     };
-
-    console.group('📊 Quiz Results');
-    console.log('Raw scores:',  scores);
-    console.log('Percentages:', pct);
-    console.log('Result step:', activeStep.getAttribute('sf-step'));
-    console.groupEnd();
-
-    // Update centre total %
-    const centreEl = activeStep.querySelector('.chart-total-pct');
+    
+    const centreEl = resultStep.querySelector('.chart-total-pct');
     if (centreEl) centreEl.textContent = pct.total + '%';
     
-    // Update each category percentage
     ['reputation', 'buyer', 'proof', 'inbound'].forEach(cat => {
-      const el = activeStep.querySelector('[data-category="' + cat + '"]');
-      if (el) el.textContent = pct[cat];
+      const el = resultStep.querySelector('[data-category="' + cat + '"]');
+      if (el) el.textContent = pct[cat] + '%';
     });
     
-    // Render donut
-    const canvas = activeStep.querySelector('.result-donut');
+    const canvas = resultStep.querySelector('.result-donut');
     if (!canvas || typeof Chart === 'undefined') return;
     
     if (chartInstance) chartInstance.destroy();
@@ -1081,100 +1062,26 @@ function initSwiperSlider() {
         plugins: {
           legend: { display: false },
           tooltip: {
-            callbacks: {
-              label: (ctx) => ctx.label + ': ' + ctx.parsed + '%'
-            }
+            callbacks: { label: (ctx) => ctx.label + ': ' + ctx.parsed + '%' }
           }
         }
       }
     });
   }
   
-  // Watch for step changes via MutationObserver on the step elements
   function startWatching() {
-    const stepEls = document.querySelectorAll('[sf-step^="result"]');
-    if (stepEls.length === 0) {
+    const resultStep = document.querySelector('[sf-step="result"]');
+    if (!resultStep) {
       setTimeout(startWatching, 200);
       return;
     }
-
+    
     const observer = new MutationObserver(() => {
-      // Debounce
       clearTimeout(window._resultRenderTimer);
-      window._resultRenderTimer = setTimeout(renderResults, 150);
+      window._resultRenderTimer = setTimeout(renderResults, 300);
     });
-
-    stepEls.forEach(el => {
-      observer.observe(el, { attributes: true, attributeFilter: ['style', 'class'] });
-    });
-
-    // Diagnostic: log on every radio click — what fired vs what the scores show after
-    function readScoreHolders() {
-      const names = ['total', 'reputation', 'buyer', 'proof', 'inbound'];
-      const out = {};
-      names.forEach(n => {
-        const el = document.querySelector('[data-score-holder="' + n + '"]');
-        out[n] = el ? el.textContent.trim() : '(missing element)';
-      });
-      return out;
-    }
-
-    document.addEventListener('click', function(e) {
-      const label = e.target.closest('[sf-score-calc]');
-      if (!label) return;
-
-      const calc   = label.getAttribute('sf-score-calc');
-      const input  = label.querySelector('input[type="radio"], input[type="checkbox"]');
-      const qName  = input ? (input.getAttribute('name') || input.getAttribute('data-name') || '?') : '?';
-      const answer = input ? input.value : '?';
-
-      console.group('🖱️ Answer clicked — ' + qName + ': ' + answer);
-      console.log('sf-score-calc:', calc);
-
-      // Read scores before SF processes (immediate) and after (delayed)
-      console.log('Scores BEFORE:', readScoreHolders());
-      setTimeout(function() {
-        console.log('Scores AFTER: ', readScoreHolders());
-        console.groupEnd();
-      }, 300);
-    }, true);
-
-    // Also warn about any answer labels missing sf-score-calc
-    setTimeout(function() {
-      const allLabels = document.querySelectorAll('[sf-step] .radio_button');
-      const missing = [];
-      allLabels.forEach(function(label) {
-        if (!label.hasAttribute('sf-score-calc')) {
-          const input = label.querySelector('input');
-          missing.push((input ? input.getAttribute('name') + '=' + input.value : label.id) + ' (id: ' + label.id + ')');
-        }
-      });
-      if (missing.length) {
-        console.warn('⚠️ Labels missing sf-score-calc (' + missing.length + '):', missing);
-      } else {
-        console.log('✅ All answer labels have sf-score-calc');
-      }
-
-      // Check for duplicate forms — this breaks SuperForm scoring
-      const sfForms = document.querySelectorAll('[sf-score]');
-      if (sfForms.length > 1) {
-        console.error(
-          '🚨 DUPLICATE FORM: Found ' + sfForms.length + ' elements with [sf-score="..."] on the page.\n' +
-          'This is why scores stay at 0. SuperForm can only manage one instance of each named form.\n' +
-          'FIX: Remove the duplicate form embed in Webflow. You likely have the component on the page twice.'
-        );
-      } else {
-        console.log('✅ Only one [sf-score] form found — no duplicate issue');
-      }
-
-      // Check if sf-score-calc is on labels vs inputs (SuperForm may need it on the input)
-      const calcOnLabels = document.querySelectorAll('label[sf-score-calc]');
-      const calcOnInputs = document.querySelectorAll('input[sf-score-calc]');
-      console.log('sf-score-calc placement: ' + calcOnLabels.length + ' on <label>, ' + calcOnInputs.length + ' on <input>');
-      if (calcOnLabels.length > 0 && calcOnInputs.length === 0) {
-        console.warn('⚠️ sf-score-calc is on <label> elements, not <input> elements. If scores stay 0, try moving sf-score-calc to the <input> inside each label.');
-      }
-    }, 500);
+    
+    observer.observe(resultStep, { attributes: true, attributeFilter: ['style', 'class'] });
   }
   
   if (document.readyState === 'loading') {
