@@ -55,7 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
     catch (e) { console.error(`❌ ${name} failed:`, e); }
   }
 
-  safeInit("Preloader",            '[preloader-wrap]',                                                                    initPreloader);
+  safeInit("Preloader",            '.preloader',                                                                          initPreloader);
   safeInit("NavAnimation",         '[data-theme-nav="true"]',                                                             initNavAnimation);
   safeInit("SplitTextAndReveal",   '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]',               initSplitTextAndReveal);
   safeInit("CustomCursor",         '.cursor',                                                                             initDynamicCustomTextCursor);
@@ -83,10 +83,10 @@ function initLenis() {
 
 
 // ============================================
-// PRELOADER ([preloader-wrap])
+// PRELOADER (.preloader)
 // ============================================
 function initPreloader() {
-  const wrap = document.querySelector("[preloader-wrap]");
+  const wrap = document.querySelector(".preloader");
 
   // Full-screen div, set up for the upward swipe-away reveal.
   gsap.set(wrap, {
