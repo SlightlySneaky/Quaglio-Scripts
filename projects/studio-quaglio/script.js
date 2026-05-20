@@ -88,34 +88,27 @@ function initLenis() {
 function initPreloader() {
   const wrap = document.querySelector(".preloader");
 
-  // Full-screen div, set up for the upward swipe-away reveal.
+  // Full-screen div, fully covering. clip-path swipes it away upward.
   gsap.set(wrap, {
     display: "flex",
     autoAlpha: 1,
-    clipPath: "polygon(0% 0%, 100% 0%, 100% var(--clip-r), 0% var(--clip-l))",
-    "--clip-r": "100%",
-    "--clip-l": "100%",
+    clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
   });
 
   const tl = gsap.timeline();
 
-  // Hold briefly, then swipe away — right edge leads, left edge trails just behind.
+  // Hold briefly, then swipe away. The bottom-right corner travels further
+  // than the bottom-left, so the right edge lifts first and the left trails behind.
   tl.to({}, { duration: 1.2 })
-    .addLabel("swipe")
     .to(wrap, {
-      "--clip-r": "0%",
-      duration: 0.8,
-      ease: "expo.inOut",
-    }, "swipe")
-    .to(wrap, {
-      "--clip-l": "0%",
-      duration: 0.8,
+      clipPath: "polygon(0% 0%, 100% 0%, 100% -50%, 0% 0%)",
+      duration: 1.0,
       ease: "expo.inOut",
       onComplete() {
         gsap.set(wrap, { display: "none" });
         animateHeroText();
       },
-    }, "swipe+=0.18");
+    });
 }
 
 function animateHeroText() {
