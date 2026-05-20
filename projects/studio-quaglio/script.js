@@ -62,7 +62,6 @@ document.addEventListener("DOMContentLoaded", () => {
   safeInit("GlobalParallax",       '[data-parallax="trigger"]',                                                           initGlobalParallax);
   safeInit("TestimonialSlider",    '[data-swiper-group="1"]',                                                            initTestimonialSlider);
   safeInit("StickyTitleScroll",    '[data-sticky-title="wrap"]',                                                          initStickyTitleScroll);
-  safeInit("FooterParallax",       '[data-footer-parallax]',                                                              initFooterParallax);
   safeInit("AccordionCSS",         '[data-accordion-css-init]',                                                           initAccordionCSS);
   safeInit("DraggableMarquee",     '[data-draggable-marquee-init]',                                                       initDraggableMarquee);
   safeInit("ButtonCharStagger",    '[data-button-animate-chars]',                                                         initButtonCharacterStagger);
@@ -87,28 +86,36 @@ function initLenis() {
 // ============================================
 function initPreloader() {
   const wrap = document.querySelector(".preloader");
+  if (!wrap) return;
 
-  // Full-screen div, fully covering.
-  gsap.set(wrap, {
-    display: "flex",
-    autoAlpha: 1,
-    filter: "blur(0px)",
-  });
+  // Driven by a CSS transition, NOT GSAP: lagSmoothing(0) on the Lenis setup
+  // lets the first big tick after page load fast-forward a GSAP timeline to its
+  // end (the "flash"). A CSS transition runs on wall-clock time and is immune.
+  const DUR  = 0.9;                          // seconds
+  const EASE = "cubic-bezier(0.87, 0, 0.13, 1)"; // same curve as the "expo.inOut" ease
 
-  const tl = gsap.timeline();
+  wrap.style.display    = "flex";
+  wrap.style.opacity    = "1";
+  wrap.style.filter     = "blur(0px)";
+  wrap.style.willChange = "opacity, filter";
 
-  // Hold briefly, then blur out and fade away to reveal the content.
-  tl.to({}, { duration: 1.2 })
-    .to(wrap, {
-      autoAlpha: 0,
-      filter: "blur(20px)",
-      duration: 0.9,
-      ease: "expo.inOut",
-      onComplete() {
-        gsap.set(wrap, { display: "none" });
-        animateHeroText();
-      },
+  function reveal() {
+    wrap.style.transition = `opacity ${DUR}s ${EASE}, filter ${DUR}s ${EASE}`;
+    requestAnimationFrame(() => {
+      wrap.style.opacity = "0";
+      wrap.style.filter  = "blur(24px)";
     });
+    window.setTimeout(() => {
+      wrap.style.display    = "none";
+      wrap.style.willChange = "auto";
+      animateHeroText();
+    }, DUR * 1000 + 50);
+  }
+
+  // Cover the screen until the page has fully loaded, hold briefly, then reveal.
+  function start() { window.setTimeout(reveal, 600); }
+  if (document.readyState === "complete") start();
+  else window.addEventListener("load", start, { once: true });
 }
 
 function animateHeroText() {
@@ -585,29 +592,6 @@ function initStickyTitleScroll() {
         });
       }
       masterTl.add(headingTl, index === 0 ? undefined : `-=${overlapOffset}`);
-    });
-  });
-}
-
-
-// FOOTER PARALLAX
-// ============================================
-function initFooterParallax() {
-  gsap.matchMedia().add("(min-width: 768px)", () => {
-    document.querySelectorAll('[data-footer-parallax]').forEach(el => {
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: el,
-          start: 'clamp(top bottom)',
-          end: 'clamp(bottom bottom)',
-          scrub: true,
-          invalidateOnRefresh: true,
-        }
-      });
-      const inner = el.querySelector('[data-footer-parallax-inner]');
-      const dark  = el.querySelector('[data-footer-parallax-dark]');
-      if (inner) tl.fromTo(inner, { yPercent: 20 }, { yPercent: 0, ease: 'linear' });
-      if (dark)  tl.fromTo(dark,  { opacity: 0.5 }, { opacity: 0, ease: 'linear' }, '<');
     });
   });
 }
