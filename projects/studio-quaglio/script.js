@@ -88,21 +88,21 @@ function initLenis() {
 function initPreloader() {
   const wrap = document.querySelector(".preloader");
 
-  // Full-screen div, fully covering. clip-path swipes it away upward.
+  // Full-screen div, fully covering.
   gsap.set(wrap, {
     display: "flex",
     autoAlpha: 1,
-    clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
+    filter: "blur(0px)",
   });
 
   const tl = gsap.timeline();
 
-  // Hold briefly, then swipe away. The bottom-right corner travels further
-  // than the bottom-left, so the right edge lifts first and the left trails behind.
+  // Hold briefly, then blur out and fade away to reveal the content.
   tl.to({}, { duration: 1.2 })
     .to(wrap, {
-      clipPath: "polygon(0% 0%, 100% 0%, 100% -50%, 0% 0%)",
-      duration: 1.0,
+      autoAlpha: 0,
+      filter: "blur(20px)",
+      duration: 0.9,
       ease: "expo.inOut",
       onComplete() {
         gsap.set(wrap, { display: "none" });
