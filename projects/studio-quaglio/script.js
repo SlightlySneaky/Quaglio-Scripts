@@ -1,7 +1,7 @@
 // Hide text targets before GSAP sets initial state
 (function () {
   const s = document.createElement("style");
-  s.textContent = "[split-heading][hero],[split-body][hero],[preload-text]{visibility:hidden}[preload-img]{clip-path:inset(100% 0% 0% 0%)}";
+  s.textContent = "[split-heading][hero],[split-body][hero]{visibility:hidden}";
   document.head.appendChild(s);
 })();
 
@@ -86,58 +86,36 @@ function initLenis() {
 // PRELOADER ([preloader-wrap])
 // ============================================
 function initPreloader() {
-  const wrap    = document.querySelector("[preloader-wrap]");
-  const imgWrap = wrap.querySelector("[preload-img-wrap]");
-  const imgs    = imgWrap ? gsap.utils.toArray("[preload-img]", imgWrap) : [];
-  const textEl  = wrap.querySelector("[preload-text]");
-  const ease    = createEase("quaglioPreload");
+  const wrap = document.querySelector("[preloader-wrap]");
 
-  gsap.set(wrap, { display: "flex", autoAlpha: 1 });
-
-  const innerImgs = imgs.map((img) => img.querySelector("[img-item]")).filter(Boolean);
-
-  if (imgs.length) {
-    gsap.set(imgs, { clipPath: "inset(100% 0% 0% 0%)" });
-    gsap.set(innerImgs, { scale: 1.05 });
-  }
+  // Full-screen div, set up for the upward swipe-away reveal.
+  gsap.set(wrap, {
+    display: "flex",
+    autoAlpha: 1,
+    clipPath: "polygon(0% 0%, 100% 0%, 100% var(--clip-r), 0% var(--clip-l))",
+    "--clip-r": "100%",
+    "--clip-l": "100%",
+  });
 
   const tl = gsap.timeline();
 
-  const getDur = (i) => Math.max(0.25, 0.9 * Math.pow(0.72, i));
-
-  tl.to(imgs[0], { clipPath: "inset(0% 0% 0% 0%)", duration: 1.0, ease }, 0);
-  if (innerImgs[0]) tl.to(innerImgs[0], { scale: 1, duration: 1.0, ease }, "<");
-
-  for (let i = 0; i < imgs.length - 1; i++) {
-    const dur = getDur(i);
-    tl.to(imgs[i],     { clipPath: "inset(0% 0% 100% 0%)", duration: dur, ease: "expo.inOut" }, ">");
-    tl.to(imgs[i + 1], { clipPath: "inset(0% 0% 0% 0%)",   duration: dur, ease },                 "<");
-    if (innerImgs[i + 1]) tl.to(innerImgs[i + 1], { scale: 1, duration: dur, ease },              "<");
-    tl.set(imgs[i], { display: "none" });
-  }
-
-  tl.to(imgs[imgs.length - 1], { clipPath: "inset(0% 0% 100% 0%)", duration: 1.2, ease: "expo.inOut" }, ">");
-  tl.set(imgs, { display: "none" });
-
-  if (textEl && typeof SplitText !== "undefined") {
-    const split = SplitText.create(textEl, {
-      type: "lines", mask: "lines", maskClass: "line-mask", linesClass: "text-line", autoSplit: true,
-    });
-    gsap.set(split.lines, { yPercent: 110 });
-    textEl.style.visibility = "visible";
-    tl.to(split.lines, { yPercent: 0, duration: 0.85, ease, stagger: 0.08 }, ">-=0.4");
-  }
-
+  // Hold briefly, then swipe away — right edge leads, left edge trails just behind.
   tl.to({}, { duration: 1.2 })
+    .addLabel("swipe")
     .to(wrap, {
-      autoAlpha: 0,
-      duration: 0.7,
+      "--clip-r": "0%",
+      duration: 0.8,
+      ease: "expo.inOut",
+    }, "swipe")
+    .to(wrap, {
+      "--clip-l": "0%",
+      duration: 0.8,
       ease: "expo.inOut",
       onComplete() {
         gsap.set(wrap, { display: "none" });
         animateHeroText();
       },
-    });
+    }, "swipe+=0.18");
 }
 
 function animateHeroText() {
