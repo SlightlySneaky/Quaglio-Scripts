@@ -49,7 +49,6 @@ function safeInit(name, selector, fn) {
 }
 
 function initAllScripts() {
-  safeInit("NavAnimation",         '[data-theme-nav="true"]',                                                             initNavAnimation);
   safeInit("SplitTextAndReveal",   '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]',               initSplitTextAndReveal);
   safeInit("CustomCursor",         '.cursor',                                                                             initDynamicCustomTextCursor);
   safeInit("GlobalParallax",       '[data-parallax="trigger"]',                                                           initGlobalParallax);
@@ -69,7 +68,8 @@ document.addEventListener("DOMContentLoaded", () => {
     initLenis();
   }
 
-  safeInit("Preloader", '.preloader', initPreloader);
+  safeInit("Preloader",    '.preloader',              initPreloader);
+  safeInit("NavAnimation", '[data-theme-nav="true"]', initNavAnimation);
 });
 
 
