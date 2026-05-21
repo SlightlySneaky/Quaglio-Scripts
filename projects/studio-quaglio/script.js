@@ -1,27 +1,3 @@
-// ============================================
-// CONSOLE
-// ============================================
-(function () {
-  const badge = "background:#000;color:#fff;padding:6px 12px;font:600 12px/1 monospace;letter-spacing:0.08em;";
-  const lead  = "color:#5b8bac;font:13px/1.7 monospace;";
-  const muted = "color:#888;font:12px/1.7 monospace;";
-
-  console.log("%c STUDIO QUAGLIO ", badge);
-  console.log(
-    "%cWe're always looking to collaborate with other designers & developers.\n" +
-    "%cLike what you see under the hood? Reach out — let's build something.",
-    lead, muted
-  );
-
-  // Keep the console clean for visitors from here on.
-  ["log", "info", "warn", "error", "debug", "trace", "table", "dir",
-   "group", "groupCollapsed", "groupEnd", "count", "time", "timeEnd", "assert"]
-    .forEach((method) => {
-      if (typeof console[method] === "function") console[method] = function () {};
-    });
-})();
-
-
 // Hide text targets before GSAP sets initial state
 (function () {
   const s = document.createElement("style");
