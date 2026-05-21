@@ -49,16 +49,31 @@ function safeInit(name, selector, fn) {
 }
 
 function initAllScripts() {
-  safeInit("SplitTextAndReveal",   '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]',               initSplitTextAndReveal);
-  safeInit("CustomCursor",         '.cursor',                                                                             initDynamicCustomTextCursor);
-  safeInit("GlobalParallax",       '[data-parallax="trigger"]',                                                           initGlobalParallax);
-  safeInit("TestimonialSlider",    '[data-swiper-group="1"]',                                                            initTestimonialSlider);
-  // safeInit("StickyTitleScroll",    '[data-sticky-title="wrap"]',                                                          initStickyTitleScroll);
-  safeInit("AccordionCSS",         '[data-accordion-css-init]',                                                           initAccordionCSS);
-  safeInit("DraggableMarquee",     '[data-draggable-marquee-init]',                                                       initDraggableMarquee);
-  safeInit("ButtonCharStagger",    '[data-button-animate-chars]',                                                         initButtonCharacterStagger);
-  // safeInit("FormModal",            '[form-wrap]',                                                                         initFormModal);
-  safeInit("SwiperSlider",         '[data-swiper-group="2"]',                                                             initSwiperSlider);
+  const queue = [
+    ["SplitTextAndReveal", '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]', initSplitTextAndReveal],
+    ["CustomCursor",       '.cursor',                       initDynamicCustomTextCursor],
+    ["GlobalParallax",     '[data-parallax="trigger"]',     initGlobalParallax],
+    ["TestimonialSlider",  '[data-swiper-group="1"]',       initTestimonialSlider],
+    // ["StickyTitleScroll",  '[data-sticky-title="wrap"]',     initStickyTitleScroll],
+    ["AccordionCSS",       '[data-accordion-css-init]',     initAccordionCSS],
+    ["DraggableMarquee",   '[data-draggable-marquee-init]', initDraggableMarquee],
+    ["ButtonCharStagger",  '[data-button-animate-chars]',   initButtonCharacterStagger],
+    // ["FormModal",          '[form-wrap]',                   initFormModal],
+    ["SwiperSlider",       '[data-swiper-group="2"]',       initSwiperSlider],
+  ];
+
+  // Run one init per task, yielding to the browser between each so the main
+  // thread never blocks long enough to freeze scroll, input or animations.
+  function runNext() {
+    const item = queue.shift();
+    if (!item) {
+      ScrollTrigger.refresh();
+      return;
+    }
+    safeInit(item[0], item[1], item[2]);
+    window.setTimeout(runNext, 0);
+  }
+  runNext();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
