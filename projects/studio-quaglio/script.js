@@ -108,40 +108,12 @@ function initPreloader() {
     window.setTimeout(() => {
       wrap.style.display    = "none";
       wrap.style.willChange = "auto";
-      animateHeroText();
     }, DUR * 1000 + 50);
   }
 
-  // Cover the screen until the page has fully loaded, hold briefly, then reveal.
-  function start() { window.setTimeout(reveal, 600); }
-  if (document.readyState === "complete") start();
-  else window.addEventListener("load", start, { once: true });
+  if (document.readyState === "complete") reveal();
+  else window.addEventListener("load", reveal, { once: true });
 }
-
-function animateHeroText() {
-  if (typeof SplitText === "undefined") return;
-
-  const ease = createEase("quaglioHero");
-
-  gsap.utils.toArray("[split-body][hero]").forEach((el) => {
-    const split = SplitText.create(el, {
-      type: "lines", mask: "lines", maskClass: "line-mask", linesClass: "is-split-line",
-    });
-    gsap.set(split.lines, { yPercent: 120, autoAlpha: 0 });
-    el.style.visibility = "visible";
-    gsap.to(split.lines, { yPercent: 0, autoAlpha: 1, duration: 0.9, ease, stagger: 0.08 });
-  });
-
-  gsap.utils.toArray("[split-heading][hero]").forEach((el) => {
-    const split = SplitText.create(el, {
-      type: "chars,words", mask: "chars", maskClass: "char-mask", charsClass: "is-split-char",
-    });
-    gsap.set(split.chars, { yPercent: 120, autoAlpha: 0 });
-    el.style.visibility = "visible";
-    gsap.to(split.chars, { yPercent: 0, autoAlpha: 1, duration: 0.8, ease, stagger: 0.02 });
-  });
-}
-
 
 // ============================================
 // NAV ANIMATION
@@ -556,47 +528,6 @@ function initTestimonialSlider() {
 }
 
 
-// SCROLL TEXT CHANGE
-// ============================================
-function initStickyTitleScroll() {
-  document.querySelectorAll('[data-sticky-title="wrap"]').forEach(wrap => {
-    const headings = Array.from(wrap.querySelectorAll('[data-sticky-title="heading"]'));
-    const masterTl = gsap.timeline({
-      scrollTrigger: {
-        trigger: wrap,
-        start: "top 40%",
-        end: "bottom bottom",
-        scrub: true,
-      }
-    });
-    const revealDuration = 0.7, fadeOutDuration = 0.7, overlapOffset = 0.15;
-
-    headings.forEach((heading, index) => {
-      heading.setAttribute("aria-label", heading.textContent);
-      const split = new SplitText(heading, { type: "words,chars", mask: "chars", maskClass: "char-mask" });
-      split.chars.forEach(char => { if (char.parentElement) char.parentElement.classList.add("char-mask"); });
-      split.words.forEach(word => word.setAttribute("aria-hidden", "true"));
-      gsap.set(heading, { visibility: "visible" });
-
-      const headingTl = gsap.timeline();
-      headingTl.from(split.chars, {
-        autoAlpha: 0,
-        stagger: { amount: revealDuration, from: "start" },
-        duration: revealDuration
-      });
-      if (index < headings.length - 1) {
-        headingTl.to(split.chars, {
-          autoAlpha: 0,
-          stagger: { amount: fadeOutDuration, from: "end" },
-          duration: fadeOutDuration
-        });
-      }
-      masterTl.add(headingTl, index === 0 ? undefined : `-=${overlapOffset}`);
-    });
-  });
-}
-
-
 // ACCORDION CSS
 // ============================================
 function initAccordionCSS() {
@@ -812,59 +743,6 @@ function initDraggableMarquee() {
   });
 }
 
-
-// Form modal ([form-open] / [form-wrap])
-// ============================================
-
-function initFormModal() {
-  const openers = document.querySelectorAll("[form-open]");
-  const wrap    = document.querySelector("[form-wrap]");
-  if (!wrap) return;
-
-  const inner   = wrap.querySelector("[form-inner]");
-  const bg      = wrap.querySelector("[form-bg]");
-  const closers = wrap.querySelectorAll("[form-close]");
-  if (!inner) { console.error("❌ Form modal: [form-inner] not found inside [form-wrap]"); return; }
-  if (!bg)    { console.error("❌ Form modal: [form-bg] not found inside [form-wrap]"); return; }
-
-  gsap.set(wrap,  { display: "flex", autoAlpha: 0, pointerEvents: "none" });
-  gsap.set(bg,    { autoAlpha: 0 });
-  gsap.set(inner, { x: "100%" });
-
-  function openForm() {
-    gsap.set(wrap, { autoAlpha: 1, pointerEvents: "auto" });
-    const tl = gsap.timeline();
-    tl.to(bg, { autoAlpha: 1, duration: 0.5, ease: "osmo" }, 0)
-      .to(inner, { x: "0%", duration: 0.65, ease: "osmo" }, "-=0.15");
-  }
-
-  function closeForm() {
-    const tl = gsap.timeline({
-      onComplete: () => gsap.set(wrap, { autoAlpha: 0, pointerEvents: "none" }),
-    });
-    tl.to(inner, { x: "100%", duration: 0.5, ease: "energy" }, 0)
-      .to(bg, { autoAlpha: 0, duration: 0.4, ease: "energy" }, 0.1);
-  }
-
-  openers.forEach((el) => el.addEventListener("click", openForm));
-  closers.forEach((el) => el.addEventListener("click", closeForm));
-  bg.addEventListener("click", closeForm);
-
-  wrap.querySelectorAll('input[type="radio"]').forEach((radio) => {
-    radio.addEventListener("change", () => {
-      wrap
-        .querySelectorAll(`input[type="radio"][name="${radio.name}"]`)
-        .forEach((r) => {
-          const text = r.closest("label")?.querySelector(".w-form-label");
-          if (text) text.style.color = "";
-        });
-      const text = radio.closest("label")?.querySelector(".w-form-label");
-      if (text) text.style.color = "white";
-    });
-  });
-}
-
-
 // BUTTON CHARACTER STAGGER ([data-button-animate-chars])
 // ============================================
 function initButtonCharacterStagger() {
@@ -944,7 +822,7 @@ function initSwiperSlider() {
   });
 }
 
-
+/*
 // CHART JS 
 // ============================================
 
@@ -1045,3 +923,56 @@ function initSwiperSlider() {
     startWatching();
   }
 })();
+*/
+
+// Form modal ([form-open] / [form-wrap])
+// ============================================
+/*
+function initFormModal() {
+  const openers = document.querySelectorAll("[form-open]");
+  const wrap    = document.querySelector("[form-wrap]");
+  if (!wrap) return;
+
+  const inner   = wrap.querySelector("[form-inner]");
+  const bg      = wrap.querySelector("[form-bg]");
+  const closers = wrap.querySelectorAll("[form-close]");
+  if (!inner) { console.error("❌ Form modal: [form-inner] not found inside [form-wrap]"); return; }
+  if (!bg)    { console.error("❌ Form modal: [form-bg] not found inside [form-wrap]"); return; }
+
+  gsap.set(wrap,  { display: "flex", autoAlpha: 0, pointerEvents: "none" });
+  gsap.set(bg,    { autoAlpha: 0 });
+  gsap.set(inner, { x: "100%" });
+
+  function openForm() {
+    gsap.set(wrap, { autoAlpha: 1, pointerEvents: "auto" });
+    const tl = gsap.timeline();
+    tl.to(bg, { autoAlpha: 1, duration: 0.5, ease: "osmo" }, 0)
+      .to(inner, { x: "0%", duration: 0.65, ease: "osmo" }, "-=0.15");
+  }
+
+  function closeForm() {
+    const tl = gsap.timeline({
+      onComplete: () => gsap.set(wrap, { autoAlpha: 0, pointerEvents: "none" }),
+    });
+    tl.to(inner, { x: "100%", duration: 0.5, ease: "energy" }, 0)
+      .to(bg, { autoAlpha: 0, duration: 0.4, ease: "energy" }, 0.1);
+  }
+
+  openers.forEach((el) => el.addEventListener("click", openForm));
+  closers.forEach((el) => el.addEventListener("click", closeForm));
+  bg.addEventListener("click", closeForm);
+
+  wrap.querySelectorAll('input[type="radio"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      wrap
+        .querySelectorAll(`input[type="radio"][name="${radio.name}"]`)
+        .forEach((r) => {
+          const text = r.closest("label")?.querySelector(".w-form-label");
+          if (text) text.style.color = "";
+        });
+      const text = radio.closest("label")?.querySelector(".w-form-label");
+      if (text) text.style.color = "white";
+    });
+  });
+}
+*/
