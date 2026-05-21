@@ -1,3 +1,27 @@
+// ============================================
+// CONSOLE
+// ============================================
+(function () {
+  const badge = "background:#000;color:#fff;padding:6px 12px;font:600 12px/1 monospace;letter-spacing:0.08em;";
+  const lead  = "color:#5b8bac;font:13px/1.7 monospace;";
+  const muted = "color:#888;font:12px/1.7 monospace;";
+
+  console.log("%c STUDIO QUAGLIO ", badge);
+  console.log(
+    "%cWe're always looking to collaborate with other designers & developers.\n" +
+    "%cLike what you see under the hood? Reach out — let's build something.",
+    lead, muted
+  );
+
+  // Keep the console clean for visitors from here on.
+  ["log", "info", "warn", "error", "debug", "trace", "table", "dir",
+   "group", "groupCollapsed", "groupEnd", "count", "time", "timeEnd", "assert"]
+    .forEach((method) => {
+      if (typeof console[method] === "function") console[method] = function () {};
+    });
+})();
+
+
 // Hide text targets before GSAP sets initial state
 (function () {
   const s = document.createElement("style");
@@ -45,7 +69,7 @@ window.addEventListener('load', () => ScrollTrigger.refresh());
 function safeInit(name, selector, fn) {
   if (selector && !document.querySelector(selector)) return;
   try { fn(); }
-  catch (e) { console.error(`❌ ${name} failed:`, e); }
+  catch {}
 }
 
 // Run `fn` once, when the first element matching `selector` nears the viewport.
@@ -53,14 +77,14 @@ function lazyOnce(name, selector, fn, rootMargin = "300px 0px") {
   const el = document.querySelector(selector);
   if (!el) return;
   if (!("IntersectionObserver" in window)) {
-    try { fn(); } catch (e) { console.error(`❌ ${name} failed:`, e); }
+    try { fn(); } catch {}
     return;
   }
   const io = new IntersectionObserver((entries) => {
     if (!entries.some((entry) => entry.isIntersecting)) return;
     io.disconnect();
     try { fn(); }
-    catch (e) { console.error(`❌ ${name} failed:`, e); }
+    catch {}
   }, { rootMargin });
   io.observe(el);
 }
@@ -74,7 +98,7 @@ function lazyEach(name, selector, perEl, rootMargin = "600px 0px") {
 
   const run = (el) => {
     try { perEl(el); }
-    catch (e) { console.error(`❌ ${name} failed:`, e); }
+    catch {}
   };
 
   if (!("IntersectionObserver" in window)) {
@@ -109,7 +133,6 @@ function lazyEach(name, selector, perEl, rootMargin = "600px 0px") {
 
 function initAllScripts() {
   // Global, lightweight — safe to run right away.
-  safeInit("CustomCursor", '.cursor',                   initDynamicCustomTextCursor);
   safeInit("AccordionCSS", '[data-accordion-css-init]', initAccordionCSS);
 
   // Per-component — built when that section approaches the viewport.
@@ -123,11 +146,7 @@ function initAllScripts() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  if (typeof Lenis === "undefined") {
-    console.warn("⚠️ Lenis: not found (script not loaded?)");
-  } else {
-    initLenis();
-  }
+  if (typeof Lenis !== "undefined") initLenis();
 
   safeInit("Preloader",          '.preloader',              initPreloader);
   safeInit("NavAnimation",       '[data-theme-nav="true"]', initNavAnimation);
@@ -191,10 +210,7 @@ function initNavAnimation() {
     gsap.registerPlugin(ScrollTrigger);
 
     const nav = document.querySelector('[data-theme-nav="true"]');
-    if (!nav) {
-      console.warn("[ThemeNav] Nav not found. Add data-theme-nav='true' to your nav.");
-      return;
-    }
+    if (!nav) return;
 
     const THEME_DARK = "u-theme-dark";
     const THEME_LIGHT = "u-theme-light";
@@ -247,15 +263,9 @@ function initNavAnimation() {
 // SPLIT TEXT + REVEAL BLOCK ANIMATIONS
 // ============================================
 function initSplitTextAndReveal() {
-  if (!window.gsap || !window.ScrollTrigger) {
-    console.warn("GSAP or ScrollTrigger not found. Split animations not initialized.");
-    return;
-  }
+  if (!window.gsap || !window.ScrollTrigger) return;
 
   const hasSplitText = typeof window.SplitText !== "undefined";
-  if (!hasSplitText) {
-    console.warn("SplitText plugin not found. [split-heading] / [split-body] animations skipped.");
-  }
 
   gsap.registerPlugin(ScrollTrigger);
   if (hasSplitText) gsap.registerPlugin(SplitText);
@@ -273,7 +283,7 @@ function initSplitTextAndReveal() {
       wordsClass: "is-split-word"
     });
 
-    gsap.set(heading, { overflow: "hidden", position: "relative" });
+    gsap.set(heading, { overflow: "hidden", position: "relative", autoAlpha: 1 });
     gsap.set(split.chars, { yPercent: 120, autoAlpha: 0 });
 
     const tl = gsap.timeline(
@@ -293,7 +303,7 @@ function initSplitTextAndReveal() {
       autoAlpha: 1,
       duration: 0.8,
       ease: "osmo",
-      stagger: { each: 0.02, from: "start" },
+      stagger: { each: 0.01, from: "start" },
       delay: delayAttr
     });
   }
@@ -310,7 +320,7 @@ function initSplitTextAndReveal() {
       linesClass: "is-split-line"
     });
 
-    gsap.set(body, { overflow: "hidden", position: "relative" });
+    gsap.set(body, { overflow: "hidden", position: "relative", autoAlpha: 1 });
     gsap.set(split.lines, { yPercent: 120, autoAlpha: 0 });
 
     const tl = gsap.timeline(
@@ -339,6 +349,16 @@ function initSplitTextAndReveal() {
   function setupRevealBlock(block) {
     const delayAttr  = parseFloat(block.getAttribute("data-reveal-delay")) || 0.2;
     const isLoadAnim = block.getAttribute("data-reveal-load") === "true";
+
+    // Hide nested split text up front so the clip can't reveal it in plain
+    // form before its own (separately-observed) split setup has run.
+    if (hasSplitText) {
+      block.querySelectorAll("[split-heading]:not([hero]), [split-body]:not([hero])").forEach((el) => {
+        if (!el.querySelector(".is-split-char, .is-split-line")) {
+          gsap.set(el, { autoAlpha: 0 });
+        }
+      });
+    }
 
     gsap.set(block, {
       clipPath: "inset(0 100% 0 0)",
@@ -373,81 +393,6 @@ function initSplitTextAndReveal() {
   lazyEach("RevealBlock",    "[reveal-block]",              setupRevealBlock);
 }
 
-
-// ============================================
-// DYNAMIC CURSOR ANIMATIONS
-// ============================================
-function initDynamicCustomTextCursor() {
-  let cursorItem = document.querySelector(".cursor");
-  let cursorParagraph = cursorItem.querySelector("p");
-  let targets = document.querySelectorAll("[data-cursor]");
-  let xOffset = 6;
-  let yOffset = 140;
-  let cursorIsOnRight = false;
-  let currentTarget = null;
-  let lastText = '';
-
-  // Position cursor relative to actual cursor position on page load
-  gsap.set(cursorItem, { xPercent: xOffset, yPercent: yOffset });
-
-  // Use GSAP quickTo for a more performative tween on the cursor
-  let xTo = gsap.quickTo(cursorItem, "x", { ease: "osmo" });
-  let yTo = gsap.quickTo(cursorItem, "y", { ease: "osmo" });
-
-  // Get the width of the cursor element including a buffer
-  const getCursorEdgeThreshold = () => {
-    return cursorItem.offsetWidth + 16; // Cursor width + 16px margin
-  };
-
-  window.addEventListener("mousemove", e => {
-    let windowWidth = window.innerWidth;
-    let windowHeight = window.innerHeight;
-    let scrollY = window.scrollY;
-    let cursorX = e.clientX;
-    let cursorY = e.clientY + scrollY;
-
-    let xPercent = xOffset;
-    let yPercent = yOffset;
-
-    let cursorEdgeThreshold = getCursorEdgeThreshold();
-    if (cursorX > windowWidth - cursorEdgeThreshold) {
-      cursorIsOnRight = true;
-      xPercent = -100;
-    } else {
-      cursorIsOnRight = false;
-    }
-
-    if (cursorY > scrollY + windowHeight * 0.9) {
-      yPercent = -120;
-    }
-
-    if (currentTarget) {
-      let newText = currentTarget.getAttribute("data-cursor");
-      if (newText !== lastText) {
-        cursorParagraph.innerHTML = newText;
-        lastText = newText;
-        cursorEdgeThreshold = getCursorEdgeThreshold();
-      }
-    }
-
-    gsap.to(cursorItem, { xPercent: xPercent, yPercent: yPercent, duration: 0.9, ease: "osmo" });
-    xTo(cursorX);
-    yTo(cursorY - scrollY);
-  });
-
-  targets.forEach(target => {
-    target.addEventListener("mouseenter", () => {
-      currentTarget = target;
-
-      let newText = target.getAttribute("data-cursor");
-      if (newText !== lastText) {
-        cursorParagraph.innerHTML = newText;
-        lastText = newText;
-        getCursorEdgeThreshold();
-      }
-    });
-  });
-}
 
 // ============================================
 // GLOBAL PARALLAX
@@ -839,7 +784,7 @@ function initSwiperSlider() {
   const cssBezier = "cubic-bezier(0.16, 0, 0.3, 1)";
 
   const groups = document.querySelectorAll('[data-swiper-group="2"]');
-  groups.forEach((swiperGroup, i) => {
+  groups.forEach((swiperGroup) => {
     const swiperSliderWrap = swiperGroup.querySelector("[data-swiper-wrap]");
     if (!swiperSliderWrap) return;
 
@@ -875,9 +820,6 @@ function initSwiperSlider() {
         setTransition(duration) {
           this.wrapperEl.style.transitionDuration = `${duration}ms`;
           this.wrapperEl.style.transitionTimingFunction = cssBezier;
-        },
-        error(err) {
-          console.error(`❌ Group ${i}: Swiper error →`, err);
         },
       },
     });
