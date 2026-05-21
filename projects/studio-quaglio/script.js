@@ -48,32 +48,81 @@ function safeInit(name, selector, fn) {
   catch (e) { console.error(`❌ ${name} failed:`, e); }
 }
 
-function initAllScripts() {
-  const queue = [
-    ["SplitTextAndReveal", '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]', initSplitTextAndReveal],
-    ["CustomCursor",       '.cursor',                       initDynamicCustomTextCursor],
-    ["GlobalParallax",     '[data-parallax="trigger"]',     initGlobalParallax],
-    ["TestimonialSlider",  '[data-swiper-group="1"]',       initTestimonialSlider],
-    // ["StickyTitleScroll",  '[data-sticky-title="wrap"]',     initStickyTitleScroll],
-    ["AccordionCSS",       '[data-accordion-css-init]',     initAccordionCSS],
-    ["DraggableMarquee",   '[data-draggable-marquee-init]', initDraggableMarquee],
-    ["ButtonCharStagger",  '[data-button-animate-chars]',   initButtonCharacterStagger],
-    // ["FormModal",          '[form-wrap]',                   initFormModal],
-    ["SwiperSlider",       '[data-swiper-group="2"]',       initSwiperSlider],
-  ];
-
-  // Run one init per task, yielding to the browser between each so the main
-  // thread never blocks long enough to freeze scroll, input or animations.
-  function runNext() {
-    const item = queue.shift();
-    if (!item) {
-      ScrollTrigger.refresh();
-      return;
-    }
-    safeInit(item[0], item[1], item[2]);
-    window.setTimeout(runNext, 0);
+// Run `fn` once, when the first element matching `selector` nears the viewport.
+function lazyOnce(name, selector, fn, rootMargin = "300px 0px") {
+  const el = document.querySelector(selector);
+  if (!el) return;
+  if (!("IntersectionObserver" in window)) {
+    try { fn(); } catch (e) { console.error(`❌ ${name} failed:`, e); }
+    return;
   }
-  runNext();
+  const io = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    io.disconnect();
+    try { fn(); }
+    catch (e) { console.error(`❌ ${name} failed:`, e); }
+  }, { rootMargin });
+  io.observe(el);
+}
+
+// Run `perEl(element)` for each match, each one only as it nears the viewport.
+// Elements that arrive together are processed one per task, so the main thread
+// never blocks long enough to freeze scroll, input or animations.
+function lazyEach(name, selector, perEl, rootMargin = "600px 0px") {
+  const els = document.querySelectorAll(selector);
+  if (!els.length) return;
+
+  const run = (el) => {
+    try { perEl(el); }
+    catch (e) { console.error(`❌ ${name} failed:`, e); }
+  };
+
+  if (!("IntersectionObserver" in window)) {
+    els.forEach(run);
+    return;
+  }
+
+  const pending = [];
+  let draining = false;
+  function drain() {
+    if (draining) return;
+    draining = true;
+    (function step() {
+      const el = pending.shift();
+      if (!el) { draining = false; return; }
+      run(el);
+      window.setTimeout(step, 0);
+    })();
+  }
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      io.unobserve(entry.target);
+      pending.push(entry.target);
+    });
+    drain();
+  }, { rootMargin });
+
+  els.forEach((el) => io.observe(el));
+}
+
+function initAllScripts() {
+  // Global, lightweight — safe to run right away.
+  safeInit("CustomCursor", '.cursor',                   initDynamicCustomTextCursor);
+  safeInit("AccordionCSS", '[data-accordion-css-init]', initAccordionCSS);
+
+  // Per-element — each split / reveal element is built only as it nears view.
+  safeInit("SplitTextAndReveal", '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]', initSplitTextAndReveal);
+
+  // Per-component — built when that section approaches the viewport.
+  lazyOnce("GlobalParallax",    '[data-parallax="trigger"]',     initGlobalParallax);
+  lazyOnce("TestimonialSlider", '[data-swiper-group="1"]',       initTestimonialSlider);
+  // lazyOnce("StickyTitleScroll", '[data-sticky-title="wrap"]',  initStickyTitleScroll);
+  lazyOnce("DraggableMarquee",  '[data-draggable-marquee-init]', initDraggableMarquee);
+  lazyOnce("ButtonCharStagger", '[data-button-animate-chars]',   initButtonCharacterStagger);
+  // lazyOnce("FormModal",         '[form-wrap]',                 initFormModal);
+  lazyOnce("SwiperSlider",      '[data-swiper-group="2"]',       initSwiperSlider);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -213,121 +262,117 @@ function initSplitTextAndReveal() {
   gsap.registerPlugin(ScrollTrigger);
   if (hasSplitText) gsap.registerPlugin(SplitText);
 
-  const ctx = gsap.context(() => {
+  // ---------- HEADINGS: split by characters ----------
+  function setupHeading(heading) {
+    const delayAttr  = parseFloat(heading.getAttribute("data-split-delay")) || 0;
+    const isLoadAnim = heading.getAttribute("data-split-load") === "true";
 
-    // ---------- HEADINGS: split by characters ---------- //
-    if (hasSplitText) {
-      const headings = document.querySelectorAll("[split-heading]:not([hero])");
-      headings.forEach((heading) => {
-        const delayAttr = parseFloat(heading.getAttribute("data-split-delay")) || 0;
-        const isLoadAnim = heading.getAttribute("data-split-load") === "true";
-
-        const split = new SplitText(heading, {
-          type: "chars,words",
-          mask: "chars",
-          maskClass: "char-mask",
-          charsClass: "is-split-char",
-          wordsClass: "is-split-word"
-        });
-
-        gsap.set(heading, { overflow: "hidden", position: "relative" });
-        gsap.set(split.chars, { yPercent: 120, autoAlpha: 0 });
-
-        const tl = gsap.timeline(
-          isLoadAnim
-            ? {}
-            : {
-                scrollTrigger: {
-                  trigger: heading,
-                  start: "clamp(top 80%)",
-                  toggleActions: "play none none none"
-                }
-              }
-        );
-
-        tl.to(split.chars, {
-          yPercent: 0,
-          autoAlpha: 1,
-          duration: 0.8,
-          ease: "osmo",
-          stagger: { each: 0.02, from: "start" },
-          delay: delayAttr
-        });
-      });
-
-      // ---------- BODY: split by lines ---------- //
-      const bodies = document.querySelectorAll("[split-body]:not([hero])");
-      bodies.forEach((body) => {
-        const delayAttr = parseFloat(body.getAttribute("data-split-delay")) || 0.1;
-        const isLoadAnim = body.getAttribute("data-split-load") === "true";
-
-        const split = new SplitText(body, {
-          type: "lines",
-          mask: "lines",
-          maskClass: "line-mask",
-          linesClass: "is-split-line"
-        });
-
-        gsap.set(body, { overflow: "hidden", position: "relative" });
-        gsap.set(split.lines, { yPercent: 120, autoAlpha: 0 });
-
-        const tl = gsap.timeline(
-          isLoadAnim
-            ? {}
-            : {
-                scrollTrigger: {
-                  trigger: body,
-                  start: "clamp(top 85%)",
-                  toggleActions: "play none none none"
-                }
-              }
-        );
-
-        tl.to(split.lines, {
-          yPercent: 0,
-          autoAlpha: 1,
-          duration: 0.9,
-          ease: "osmo",
-          stagger: { each: 0.08, from: "start" },
-          delay: delayAttr
-        });
-      });
-    }
-
-    // ---------- REVEAL BLOCKS: clip-path mask ----------
-    const blocks = document.querySelectorAll("[reveal-block]");
-    blocks.forEach((block) => {
-      const delayAttr = parseFloat(block.getAttribute("data-reveal-delay")) || 0.2;
-      const isLoadAnim = block.getAttribute("data-reveal-load") === "true";
-
-      gsap.set(block, {
-        clipPath: "inset(0 100% 0 0)",
-        willChange: "clip-path"
-      });
-
-      const tl = gsap.timeline(
-        isLoadAnim
-          ? {}
-          : {
-              scrollTrigger: {
-                trigger: block,
-                start: "clamp(top 90%)",
-                toggleActions: "play none none none"
-              }
-            }
-      );
-
-      tl.to(block, {
-        clipPath: "inset(0 0% 0 0)",
-        duration: 1,
-        ease: "osmo",
-        delay: delayAttr
-      });
+    const split = new SplitText(heading, {
+      type: "chars,words",
+      mask: "chars",
+      maskClass: "char-mask",
+      charsClass: "is-split-char",
+      wordsClass: "is-split-word"
     });
 
-  });
+    gsap.set(heading, { overflow: "hidden", position: "relative" });
+    gsap.set(split.chars, { yPercent: 120, autoAlpha: 0 });
 
-  return () => ctx.revert();
+    const tl = gsap.timeline(
+      isLoadAnim
+        ? {}
+        : {
+            scrollTrigger: {
+              trigger: heading,
+              start: "clamp(top 80%)",
+              toggleActions: "play none none none"
+            }
+          }
+    );
+
+    tl.to(split.chars, {
+      yPercent: 0,
+      autoAlpha: 1,
+      duration: 0.8,
+      ease: "osmo",
+      stagger: { each: 0.02, from: "start" },
+      delay: delayAttr
+    });
+  }
+
+  // ---------- BODY: split by lines ----------
+  function setupBody(body) {
+    const delayAttr  = parseFloat(body.getAttribute("data-split-delay")) || 0.1;
+    const isLoadAnim = body.getAttribute("data-split-load") === "true";
+
+    const split = new SplitText(body, {
+      type: "lines",
+      mask: "lines",
+      maskClass: "line-mask",
+      linesClass: "is-split-line"
+    });
+
+    gsap.set(body, { overflow: "hidden", position: "relative" });
+    gsap.set(split.lines, { yPercent: 120, autoAlpha: 0 });
+
+    const tl = gsap.timeline(
+      isLoadAnim
+        ? {}
+        : {
+            scrollTrigger: {
+              trigger: body,
+              start: "clamp(top 85%)",
+              toggleActions: "play none none none"
+            }
+          }
+    );
+
+    tl.to(split.lines, {
+      yPercent: 0,
+      autoAlpha: 1,
+      duration: 0.9,
+      ease: "osmo",
+      stagger: { each: 0.08, from: "start" },
+      delay: delayAttr
+    });
+  }
+
+  // ---------- REVEAL BLOCKS: clip-path mask ----------
+  function setupRevealBlock(block) {
+    const delayAttr  = parseFloat(block.getAttribute("data-reveal-delay")) || 0.2;
+    const isLoadAnim = block.getAttribute("data-reveal-load") === "true";
+
+    gsap.set(block, {
+      clipPath: "inset(0 100% 0 0)",
+      willChange: "clip-path"
+    });
+
+    const tl = gsap.timeline(
+      isLoadAnim
+        ? {}
+        : {
+            scrollTrigger: {
+              trigger: block,
+              start: "clamp(top 90%)",
+              toggleActions: "play none none none"
+            }
+          }
+    );
+
+    tl.to(block, {
+      clipPath: "inset(0 0% 0 0)",
+      duration: 1,
+      ease: "osmo",
+      delay: delayAttr
+    });
+  }
+
+  // Build each element only as it nears the viewport — never all at once.
+  if (hasSplitText) {
+    lazyEach("SplitHeading", "[split-heading]:not([hero])", setupHeading);
+    lazyEach("SplitBody",    "[split-body]:not([hero])",    setupBody);
+  }
+  lazyEach("RevealBlock",    "[reveal-block]",              setupRevealBlock);
 }
 
 
