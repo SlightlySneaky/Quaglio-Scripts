@@ -108,7 +108,7 @@ function initPreloader() {
       wrap.style.opacity = "0";
       wrap.style.filter  = "blur(24px)";
     });
-    window.setTimeout(initAllScripts, DUR * 1000 - 200);
+    window.setTimeout(initAllScripts, 0);
     window.setTimeout(() => {
       wrap.style.display    = "none";
       wrap.style.willChange = "auto";
