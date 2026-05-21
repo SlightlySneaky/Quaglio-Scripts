@@ -42,6 +42,26 @@ window.addEventListener('load', () => ScrollTrigger.refresh());
 // ============================================
 // INIT
 // ============================================
+function safeInit(name, selector, fn) {
+  if (selector && !document.querySelector(selector)) return;
+  try { fn(); }
+  catch (e) { console.error(`❌ ${name} failed:`, e); }
+}
+
+function initAllScripts() {
+  safeInit("NavAnimation",         '[data-theme-nav="true"]',                                                             initNavAnimation);
+  safeInit("SplitTextAndReveal",   '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]',               initSplitTextAndReveal);
+  safeInit("CustomCursor",         '.cursor',                                                                             initDynamicCustomTextCursor);
+  safeInit("GlobalParallax",       '[data-parallax="trigger"]',                                                           initGlobalParallax);
+  safeInit("TestimonialSlider",    '[data-swiper-group="1"]',                                                            initTestimonialSlider);
+  // safeInit("StickyTitleScroll",    '[data-sticky-title="wrap"]',                                                          initStickyTitleScroll);
+  safeInit("AccordionCSS",         '[data-accordion-css-init]',                                                           initAccordionCSS);
+  safeInit("DraggableMarquee",     '[data-draggable-marquee-init]',                                                       initDraggableMarquee);
+  safeInit("ButtonCharStagger",    '[data-button-animate-chars]',                                                         initButtonCharacterStagger);
+  // safeInit("FormModal",            '[form-wrap]',                                                                         initFormModal);
+  safeInit("SwiperSlider",         '[data-swiper-group="2"]',                                                             initSwiperSlider);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   if (typeof Lenis === "undefined") {
     console.warn("⚠️ Lenis: not found (script not loaded?)");
@@ -49,24 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initLenis();
   }
 
-  function safeInit(name, selector, fn) {
-    if (selector && !document.querySelector(selector)) return;
-    try { fn(); }
-    catch (e) { console.error(`❌ ${name} failed:`, e); }
-  }
-
-  safeInit("Preloader",            '.preloader',                                                                          initPreloader);
-  safeInit("NavAnimation",         '[data-theme-nav="true"]',                                                             initNavAnimation);
-  safeInit("SplitTextAndReveal",   '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]',               initSplitTextAndReveal);
-  safeInit("CustomCursor",         '.cursor',                                                                             initDynamicCustomTextCursor);
-  safeInit("GlobalParallax",       '[data-parallax="trigger"]',                                                           initGlobalParallax);
-  safeInit("TestimonialSlider",    '[data-swiper-group="1"]',                                                            initTestimonialSlider);
-  safeInit("StickyTitleScroll",    '[data-sticky-title="wrap"]',                                                          initStickyTitleScroll);
-  safeInit("AccordionCSS",         '[data-accordion-css-init]',                                                           initAccordionCSS);
-  safeInit("DraggableMarquee",     '[data-draggable-marquee-init]',                                                       initDraggableMarquee);
-  safeInit("ButtonCharStagger",    '[data-button-animate-chars]',                                                         initButtonCharacterStagger);
-  safeInit("FormModal",            '[form-wrap]',                                                                         initFormModal);
-  safeInit("SwiperSlider",         '[data-swiper-group="2"]',                                                             initSwiperSlider);
+  safeInit("Preloader", '.preloader', initPreloader);
 });
 
 
@@ -105,6 +108,7 @@ function initPreloader() {
       wrap.style.opacity = "0";
       wrap.style.filter  = "blur(24px)";
     });
+    window.setTimeout(initAllScripts, DUR * 1000 - 200);
     window.setTimeout(() => {
       wrap.style.display    = "none";
       wrap.style.willChange = "auto";
