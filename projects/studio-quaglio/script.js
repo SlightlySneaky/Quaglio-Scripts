@@ -112,9 +112,6 @@ function initAllScripts() {
   safeInit("CustomCursor", '.cursor',                   initDynamicCustomTextCursor);
   safeInit("AccordionCSS", '[data-accordion-css-init]', initAccordionCSS);
 
-  // Per-element — each split / reveal element is built only as it nears view.
-  safeInit("SplitTextAndReveal", '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]', initSplitTextAndReveal);
-
   // Per-component — built when that section approaches the viewport.
   lazyOnce("GlobalParallax",    '[data-parallax="trigger"]',     initGlobalParallax);
   lazyOnce("TestimonialSlider", '[data-swiper-group="1"]',       initTestimonialSlider);
@@ -132,8 +129,9 @@ document.addEventListener("DOMContentLoaded", () => {
     initLenis();
   }
 
-  safeInit("Preloader",    '.preloader',              initPreloader);
-  safeInit("NavAnimation", '[data-theme-nav="true"]', initNavAnimation);
+  safeInit("Preloader",          '.preloader',              initPreloader);
+  safeInit("NavAnimation",       '[data-theme-nav="true"]', initNavAnimation);
+  safeInit("SplitTextAndReveal", '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]', initSplitTextAndReveal);
 });
 
 
