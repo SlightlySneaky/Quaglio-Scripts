@@ -109,7 +109,8 @@ function lazyEach(name, selector, perEl, rootMargin = "600px 0px") {
 
 function initAllScripts() {
   // Global, lightweight — safe to run right away.
-  safeInit("AccordionCSS", '[data-accordion-css-init]', initAccordionCSS);
+  safeInit("AccordionCSS",    '[data-accordion-css-init]', initAccordionCSS);
+  safeInit("HeroParallax",    '[data-hero-parallax]',      initHeroParallax);
 
   // Per-component — built when that section approaches the viewport.
   lazyOnce("GlobalParallax",    '[data-parallax="trigger"]',     initGlobalParallax);
@@ -413,6 +414,41 @@ function initGlobalParallax() {
       return () => ctx.revert();
     }
   );
+}
+
+
+// HERO PARALLAX ([data-hero-parallax])
+// ============================================
+function initHeroParallax() {
+  if (window.matchMedia("(max-width: 991px)").matches) return;
+
+  document.querySelectorAll("[data-hero-parallax]").forEach(el => {
+    const inner = el.querySelector("[data-hero-parallax-inner]");
+    const dark = el.querySelector("[data-hero-parallax-dark]");
+
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: el,
+        start: "clamp(top top)",
+        end: "clamp(bottom top)",
+        scrub: true
+      }
+    });
+
+    if (inner) {
+      tl.to(inner, {
+        yPercent: 25,
+        ease: "linear"
+      });
+    }
+
+    if (dark) {
+      tl.to(dark, {
+        opacity: 0.5,
+        ease: "linear"
+      }, "<");
+    }
+  });
 }
 
 
