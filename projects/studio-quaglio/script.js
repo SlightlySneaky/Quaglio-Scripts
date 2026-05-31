@@ -123,8 +123,10 @@ function initAllScripts() {
   // lazyOnce("FormModal",         '[form-wrap]',                 initFormModal);
   lazyOnce("SwiperSlider",      '[data-swiper-group="2"]',       initSwiperSlider);
 
-  // Per-element WebGL — each canvas spins up only as it nears the viewport.
-  lazyEach("MetalShader", '[data-metal]', initMetalShader);
+  // Per-element WebGL — safeInit so hero instances start before scroll.
+  safeInit("MetalShader", '[data-metal]', () =>
+    document.querySelectorAll('[data-metal]').forEach(initMetalShader)
+  );
 }
 
 function bootStudioQuaglio() {
