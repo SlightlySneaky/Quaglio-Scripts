@@ -384,64 +384,59 @@ function initBarbaNavUpdate(data) {
 // YOUR FUNCTIONS GO BELOW HERE
 // -----------------------------------------
 
+
 // ============================================
 // NAV ANIMATION
 // ============================================
 function initNavAnimation() {
-  const runNav = () => {
-    if (!window.gsap || !window.ScrollTrigger) return;
+  if (!window.gsap || !window.ScrollTrigger) return;
 
-    gsap.registerPlugin(ScrollTrigger);
+  gsap.registerPlugin(ScrollTrigger);
 
-    const nav = document.querySelector('[data-theme-nav="true"]');
-    if (!nav) return;
+  const nav = document.querySelector('[data-theme-nav="true"]');
+  if (!nav) return;
 
-    const THEME_DARK = "u-theme-dark";
-    const THEME_LIGHT = "u-theme-light";
+  const THEME_DARK  = "u-theme-dark";
+  const THEME_LIGHT = "u-theme-light";
 
-    const getThemeForSection = (section) => {
-      if (section.classList.contains(THEME_DARK)) return THEME_DARK;
-      if (section.classList.contains(THEME_LIGHT)) return THEME_LIGHT;
-      if (section.querySelector(`.${THEME_DARK}`)) return THEME_DARK;
-      if (section.querySelector(`.${THEME_LIGHT}`)) return THEME_LIGHT;
-      return null;
-    };
-
-    const applyNavTheme = (theme) => {
-      if (!theme) return;
-      nav.classList.remove(THEME_DARK, THEME_LIGHT);
-      nav.classList.add(theme);
-    };
-
-    const sections = document.querySelectorAll(".section");
-    if (!sections.length) return;
-
-    sections.forEach((section) => {
-      const theme = getThemeForSection(section);
-      if (!theme) return;
-
-      ScrollTrigger.create({
-        trigger: section,
-        start: "top 5%",
-        end: "bottom 5%",
-        onEnter: () => applyNavTheme(theme),
-        onEnterBack: () => applyNavTheme(theme),
-      });
-    });
-
-    // Set correct theme on page load
-    ScrollTrigger.refresh();
-    requestAnimationFrame(() => {
-      const y = window.innerHeight * 0.3;
-      const active = [...sections].find((s) => {
-        const r = s.getBoundingClientRect();
-        return r.top <= y && r.bottom >= y;
-      });
-      if (active) applyNavTheme(getThemeForSection(active));
-    });
+  const getThemeForSection = (section) => {
+    if (section.classList.contains(THEME_DARK))  return THEME_DARK;
+    if (section.classList.contains(THEME_LIGHT)) return THEME_LIGHT;
+    if (section.querySelector(`.${THEME_DARK}`))  return THEME_DARK;
+    if (section.querySelector(`.${THEME_LIGHT}`)) return THEME_LIGHT;
+    return null;
   };
-  if (document.readyState === "complete") runNav();
-  else window.addEventListener("load", runNav, { once: true });
+
+  const applyNavTheme = (theme) => {
+    if (!theme) return;
+    nav.classList.remove(THEME_DARK, THEME_LIGHT);
+    nav.classList.add(theme);
+  };
+
+  const sections = document.querySelectorAll(".section");
+  if (!sections.length) return;
+
+  sections.forEach((section) => {
+    const theme = getThemeForSection(section);
+    if (!theme) return;
+    ScrollTrigger.create({
+      trigger: section,
+      start: "top 5%",
+      end: "bottom 5%",
+      onEnter:     () => applyNavTheme(theme),
+      onEnterBack: () => applyNavTheme(theme),
+    });
+  });
+
+  ScrollTrigger.refresh();
+  requestAnimationFrame(() => {
+    const y = window.innerHeight * 0.3;
+    const active = [...sections].find((s) => {
+      const r = s.getBoundingClientRect();
+      return r.top <= y && r.bottom >= y;
+    });
+    if (active) applyNavTheme(getThemeForSection(active));
+  });
 }
 
 
@@ -451,12 +446,11 @@ function initNavAnimation() {
 function initSplitTextAndReveal() {
   if (!window.gsap || !window.ScrollTrigger) return;
 
-  const hasSplitText = typeof window.SplitText !== "undefined";
-
   gsap.registerPlugin(ScrollTrigger);
+
+  const hasSplitText = typeof window.SplitText !== "undefined";
   if (hasSplitText) gsap.registerPlugin(SplitText);
 
-  // ---------- HEADINGS: split by characters ----------
   function setupHeading(heading) {
     const delayAttr  = parseFloat(heading.getAttribute("data-split-delay")) || 0;
     const isLoadAnim = heading.getAttribute("data-split-load") === "true";
@@ -494,7 +488,6 @@ function initSplitTextAndReveal() {
     });
   }
 
-  // ---------- BODY: split by lines ----------
   function setupBody(body) {
     const delayAttr  = parseFloat(body.getAttribute("data-split-delay")) || 0.1;
     const isLoadAnim = body.getAttribute("data-split-load") === "true";
@@ -531,13 +524,10 @@ function initSplitTextAndReveal() {
     });
   }
 
-  // ---------- REVEAL BLOCKS: clip-path mask ----------
   function setupRevealBlock(block) {
     const delayAttr  = parseFloat(block.getAttribute("data-reveal-delay")) || 0.2;
     const isLoadAnim = block.getAttribute("data-reveal-load") === "true";
 
-    // Hide nested split text up front so the clip can't reveal it in plain
-    // form before its own (separately-observed) split setup has run.
     if (hasSplitText) {
       block.querySelectorAll("[split-heading]:not([hero]), [split-body]:not([hero])").forEach((el) => {
         if (!el.querySelector(".is-split-char, .is-split-line")) {
@@ -571,18 +561,74 @@ function initSplitTextAndReveal() {
     });
   }
 
-  // Build each element only as it nears the viewport — never all at once.
+  const lazyEach = (selector, perEl, rootMargin = "600px 0px") => {
+    const els = document.querySelectorAll(selector);
+    if (!els.length) return;
+    if (!("IntersectionObserver" in window)) { els.forEach(el => { try { perEl(el); } catch {} }); return; }
+    const pending = [];
+    let draining = false;
+    function drain() {
+      if (draining) return;
+      draining = true;
+      (function step() {
+        const el = pending.shift();
+        if (!el) { draining = false; return; }
+        try { perEl(el); } catch {}
+        window.setTimeout(step, 0);
+      })();
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => { if (!entry.isIntersecting) return; io.unobserve(entry.target); pending.push(entry.target); });
+      drain();
+    }, { rootMargin });
+    els.forEach((el) => io.observe(el));
+  };
+
   if (hasSplitText) {
-    lazyEach("SplitHeading", "[split-heading]:not([hero])", setupHeading);
-    lazyEach("SplitBody",    "[split-body]:not([hero])",    setupBody);
+    lazyEach("[split-heading]:not([hero])", setupHeading);
+    lazyEach("[split-body]:not([hero])",    setupBody);
   }
-  lazyEach("RevealBlock",    "[reveal-block]",              setupRevealBlock);
+  lazyEach("[reveal-block]", setupRevealBlock);
 }
+
+
+// ============================================
+// HERO PARALLAX
+// ============================================
+function initHeroParallax() {
+  if (!window.gsap || !window.ScrollTrigger) return;
+  if (window.matchMedia("(max-width: 991px)").matches) return;
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  document.querySelectorAll("[data-hero-parallax]").forEach(el => {
+    const inner = el.querySelector("[data-hero-parallax-inner]");
+    const dark  = el.querySelector("[data-hero-parallax-dark]");
+    if (!inner && !dark) return;
+
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: el,
+        start: "clamp(top top)",
+        end: "clamp(bottom top)",
+        scrub: true
+      }
+    });
+
+    if (inner) tl.to(inner, { yPercent: 25, ease: "linear" });
+    if (dark)  tl.to(dark,  { opacity: 0.5, ease: "linear" }, "<");
+  });
+}
+
 
 // ============================================
 // GLOBAL PARALLAX
 // ============================================
 function initGlobalParallax() {
+  if (!window.gsap || !window.ScrollTrigger) return;
+
+  gsap.registerPlugin(ScrollTrigger);
+
   const mm = gsap.matchMedia();
   mm.add(
     {
@@ -602,13 +648,13 @@ function initGlobalParallax() {
             (disable === "tablet"          && isTablet)
           ) return;
 
-          const target    = trigger.querySelector('[data-parallax="target"]') || trigger;
-          const direction = trigger.getAttribute("data-parallax-direction") || "vertical";
-          const prop      = direction === "horizontal" ? "xPercent" : "yPercent";
-          const scrubAttr = trigger.getAttribute("data-parallax-scrub");
-          const scrub     = scrubAttr ? parseFloat(scrubAttr) : true;
-          const startVal  = trigger.getAttribute("data-parallax-start")  !== null ? parseFloat(trigger.getAttribute("data-parallax-start"))  : 20;
-          const endVal    = trigger.getAttribute("data-parallax-end")    !== null ? parseFloat(trigger.getAttribute("data-parallax-end"))    : -20;
+          const target      = trigger.querySelector('[data-parallax="target"]') || trigger;
+          const direction   = trigger.getAttribute("data-parallax-direction") || "vertical";
+          const prop        = direction === "horizontal" ? "xPercent" : "yPercent";
+          const scrubAttr   = trigger.getAttribute("data-parallax-scrub");
+          const scrub       = scrubAttr ? parseFloat(scrubAttr) : true;
+          const startVal    = trigger.getAttribute("data-parallax-start")  !== null ? parseFloat(trigger.getAttribute("data-parallax-start"))  : 20;
+          const endVal      = trigger.getAttribute("data-parallax-end")    !== null ? parseFloat(trigger.getAttribute("data-parallax-end"))    : -20;
           const scrollStart = `clamp(${trigger.getAttribute("data-parallax-scroll-start") || "top bottom"})`;
           const scrollEnd   = `clamp(${trigger.getAttribute("data-parallax-scroll-end")   || "bottom top"})`;
 
@@ -626,54 +672,23 @@ function initGlobalParallax() {
 
 
 // ============================================
-// HERO PARALLAX ([data-hero-parallax])
-// ============================================
-function initHeroParallax() {
-  if (window.matchMedia("(max-width: 991px)").matches) return;
-
-  document.querySelectorAll("[data-hero-parallax]").forEach(el => {
-    const inner = el.querySelector("[data-hero-parallax-inner]");
-    const dark = el.querySelector("[data-hero-parallax-dark]");
-
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: el,
-        start: "clamp(top top)",
-        end: "clamp(bottom top)",
-        scrub: true
-      }
-    });
-
-    if (inner) {
-      tl.to(inner, {
-        yPercent: 25,
-        ease: "linear"
-      });
-    }
-
-    if (dark) {
-      tl.to(dark, {
-        opacity: 0.5,
-        ease: "linear"
-      }, "<");
-    }
-  });
-}
-
-
-// ============================================
 // TESTIMONIAL SLIDER
 // ============================================
 function initTestimonialSlider() {
-  const swiperEl = document.querySelector('[data-swiper-group="1"] .swiper');
-  const originalSlideCount = swiperEl
-    ? swiperEl.querySelectorAll(".swiper-wrapper > .swiper-slide").length
-    : 0;
+  if (typeof Swiper === "undefined") return;
+  if (typeof window.SplitText === "undefined") return;
+  if (!window.gsap) return;
 
+  const swiperEl = document.querySelector('[data-swiper-group="1"] .swiper');
+  if (!swiperEl) return;
+
+  gsap.registerPlugin(SplitText);
+
+  const originalSlideCount = swiperEl.querySelectorAll(".swiper-wrapper > .swiper-slide").length;
   const splitCache = new Map();
 
   function initSplits(slides) {
-    slides.forEach(function (slide) {
+    slides.forEach((slide) => {
       if (splitCache.has(slide)) return;
       const quoteEl   = slide.querySelector('[data-split="quote"]');
       const nameEl    = slide.querySelector('[data-split="name"]');
@@ -761,7 +776,10 @@ function initTestimonialSlider() {
 // ACCORDION CSS
 // ============================================
 function initAccordionCSS() {
-  document.querySelectorAll('[data-accordion-css-init]').forEach((accordion) => {
+  const accordions = document.querySelectorAll('[data-accordion-css-init]');
+  if (!accordions.length) return;
+
+  accordions.forEach((accordion) => {
     const closeSiblings = accordion.getAttribute('data-accordion-close-siblings') === 'true';
     accordion.addEventListener('click', (event) => {
       const toggle = event.target.closest('[data-accordion-toggle]');
@@ -784,7 +802,12 @@ function initAccordionCSS() {
 // DRAGGABLE MARQUEE
 // ============================================
 function initDraggableMarquee() {
+  if (!window.gsap || !window.ScrollTrigger || !window.Observer) return;
+
+  gsap.registerPlugin(ScrollTrigger, Observer);
+
   const wrappers = document.querySelectorAll("[data-draggable-marquee-init]");
+  if (!wrappers.length) return;
 
   const getNumberAttr = (el, name, fallback) => {
     const value = parseFloat(el.getAttribute(name));
@@ -795,11 +818,11 @@ function initDraggableMarquee() {
     if (wrapper.getAttribute("data-draggable-marquee-init") === "initialized") return;
 
     const collection = wrapper.querySelector("[data-draggable-marquee-collection]");
-    const list = wrapper.querySelector("[data-draggable-marquee-list]");
+    const list       = wrapper.querySelector("[data-draggable-marquee-list]");
     if (!collection || !list) return;
 
-    const duration    = getNumberAttr(wrapper, "data-duration", 20);
-    const multiplier  = getNumberAttr(wrapper, "data-multiplier", 40);
+    const duration    = getNumberAttr(wrapper, "data-duration",    20);
+    const multiplier  = getNumberAttr(wrapper, "data-multiplier",  40);
     const sensitivity = getNumberAttr(wrapper, "data-sensitivity", 0.01);
 
     const wrapperWidth = wrapper.getBoundingClientRect().width;
@@ -851,7 +874,7 @@ function initDraggableMarquee() {
         const restingDirection = velocityTimeScale < 0 ? -1 : 1;
         gsap.timeline({ onUpdate: applyTimeScale })
           .to(timeScale, { value: velocityTimeScale, duration: 0.1, overwrite: true })
-          .to(timeScale, { value: restingDirection, duration: 1.0 });
+          .to(timeScale, { value: restingDirection,  duration: 1.0 });
       }
     });
 
@@ -859,10 +882,10 @@ function initDraggableMarquee() {
       trigger: wrapper,
       start: "top bottom",
       end: "bottom top",
-      onEnter:      () => { marqueeLoop.resume(); applyTimeScale(); marqueeObserver.enable(); },
-      onEnterBack:  () => { marqueeLoop.resume(); applyTimeScale(); marqueeObserver.enable(); },
-      onLeave:      () => { marqueeLoop.pause(); marqueeObserver.disable(); },
-      onLeaveBack:  () => { marqueeLoop.pause(); marqueeObserver.disable(); },
+      onEnter:     () => { marqueeLoop.resume(); applyTimeScale(); marqueeObserver.enable(); },
+      onEnterBack: () => { marqueeLoop.resume(); applyTimeScale(); marqueeObserver.enable(); },
+      onLeave:     () => { marqueeLoop.pause();  marqueeObserver.disable(); },
+      onLeaveBack: () => { marqueeLoop.pause();  marqueeObserver.disable(); },
     });
 
     wrapper.setAttribute("data-draggable-marquee-init", "initialized");
@@ -874,8 +897,10 @@ function initDraggableMarquee() {
 // BUTTON CHARACTER STAGGER
 // ============================================
 function initButtonCharacterStagger() {
-  const offsetIncrement = 0.01;
   const buttons = document.querySelectorAll('[data-button-animate-chars]');
+  if (!buttons.length) return;
+
+  const offsetIncrement = 0.01;
 
   buttons.forEach(button => {
     const text = button.textContent;
@@ -885,11 +910,7 @@ function initButtonCharacterStagger() {
       const span = document.createElement('span');
       span.textContent = char;
       span.style.transitionDelay = `${index * offsetIncrement}s`;
-
-      if (char === ' ') {
-        span.style.whiteSpace = 'pre';
-      }
-
+      if (char === ' ') span.style.whiteSpace = 'pre';
       button.appendChild(span);
     });
   });
@@ -900,9 +921,13 @@ function initButtonCharacterStagger() {
 // SWIPER SLIDER ([data-swiper-group="2"])
 // ============================================
 function initSwiperSlider() {
-  const cssBezier = "cubic-bezier(0.16, 0, 0.3, 1)";
+  if (typeof Swiper === "undefined") return;
 
   const groups = document.querySelectorAll('[data-swiper-group="2"]');
+  if (!groups.length) return;
+
+  const cssBezier = "cubic-bezier(0.16, 0, 0.3, 1)";
+
   groups.forEach((swiperGroup) => {
     const swiperSliderWrap = swiperGroup.querySelector("[data-swiper-wrap]");
     if (!swiperSliderWrap) return;
