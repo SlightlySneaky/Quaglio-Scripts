@@ -313,76 +313,103 @@ function prepareForTransition(parent, current, next){
 // BARBA HOOKS + INIT
 // -----------------------------------------
 
-barba.hooks.beforeEnter(data => {
-  // Position new container on top
-  gsap.set(data.next.container, {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
+// Wire up Barba transitions. Only called when Barba is actually on the page.
+function initBarbaTransitions() {
+  barba.hooks.beforeEnter(data => {
+    // Position new container on top
+    gsap.set(data.next.container, {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+    });
+
+    if (lenis && typeof lenis.stop === "function") {
+      lenis.stop();
+    }
+
+    initBeforeEnterFunctions(data.next.container);
+    applyThemeFrom(data.next.container);
   });
 
-  if (lenis && typeof lenis.stop === "function") {
-    lenis.stop();
-  }
+  barba.hooks.afterLeave(() => {
+    if (hasScrollTrigger) {
+      ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+    }
+  });
 
-  initBeforeEnterFunctions(data.next.container);
-  applyThemeFrom(data.next.container);
-});
+  barba.hooks.enter(data => {
+    initBarbaNavUpdate(data);
+  });
 
-barba.hooks.afterLeave(() => {
-  if (hasScrollTrigger) {
-    ScrollTrigger.getAll().forEach(trigger => trigger.kill());
-  }
-});
+  barba.hooks.afterEnter(data => {
+    // Run page functions
+    initAfterEnterFunctions(data.next.container);
 
-barba.hooks.enter(data => {
-  initBarbaNavUpdate(data);
-});
+    // Settle
+    if (hasLenis) {
+      lenis.resize();
+      lenis.start();
+    }
 
-barba.hooks.afterEnter(data => {
-  // Run page functions
-  initAfterEnterFunctions(data.next.container);
+    if (hasScrollTrigger) {
+      ScrollTrigger.refresh();
+    }
+  });
 
-  // Settle
-  if (hasLenis) {
+  barba.init({
+    debug: true, // staging — set to false in script.prod.js
+    timeout: 7000,
+    preventRunning: true,
+    transitions: [
+      {
+        name: "default",
+        sync: true,
+
+        // First load
+        async once(data) {
+          initOnceFunctions();
+
+          return runPageOnceAnimation(data.next.container);
+        },
+
+        // Current page leaves
+        async leave(data) {
+          return runPageLeaveAnimation(data.current.container, data.next.container);
+        },
+
+        // New page enters
+        async enter(data) {
+          return runPageEnterAnimation(data.next.container);
+        }
+      }
+    ],
+  });
+}
+
+// Boot the page without Barba: no transitions, just initialise everything once
+// for the current document so the site works exactly as a normal page.
+function bootWithoutBarba() {
+  const container = document.querySelector('[data-barba="container"]') || document.body;
+  initOnceFunctions();
+  initBeforeEnterFunctions(container);
+  applyThemeFrom(container);
+  initAfterEnterFunctions(container);
+  if (hasLenis && lenis) {
     lenis.resize();
     lenis.start();
   }
-
   if (hasScrollTrigger) {
     ScrollTrigger.refresh();
   }
-});
+}
 
-barba.init({
-  debug: true, // staging — set to false in script.prod.js
-  timeout: 7000,
-  preventRunning: true,
-  transitions: [
-    {
-      name: "default",
-      sync: true,
-
-      // First load
-      async once(data) {
-        initOnceFunctions();
-
-        return runPageOnceAnimation(data.next.container);
-      },
-
-      // Current page leaves
-      async leave(data) {
-        return runPageLeaveAnimation(data.current.container, data.next.container);
-      },
-
-      // New page enters
-      async enter(data) {
-        return runPageEnterAnimation(data.next.container);
-      }
-    }
-  ],
-});
+// Works with OR without Barba on the page.
+if (typeof barba !== "undefined" && barba && typeof barba.init === "function") {
+  initBarbaTransitions();
+} else {
+  bootWithoutBarba();
+}
 
 
 // -----------------------------------------
