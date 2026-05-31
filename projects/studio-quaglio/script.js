@@ -38,7 +38,6 @@ function initOnceFunctions() {
   onceFunctionsInitialized = true;
   
   // Runs once on first load
-  if (has('.preloader'))                    initPreloader();
   if (has('[data-theme-nav="true"]'))       initNavAnimation();
   if (has('[data-button-animate-chars]'))   initButtonCharacterStagger();
 }
