@@ -1179,11 +1179,27 @@ function initMetalShader(el) {
   const isBorder = borderPx > 0;
 
   const canvas = document.createElement("canvas");
-  canvas.style.cssText = isBorder
-    ? `position:absolute;inset:-${borderPx}px;pointer-events:none;z-index:-1;`
-    : "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;";
+  if (isBorder) {
+    // Metal fills a rectangle borderPx larger than the element on every side,
+    // then a centered hole the exact size of the element is masked out, so only
+    // a borderPx-wide metallic rim around the outside edge remains visible. No
+    // backing element or background colour needed — the centre stays transparent.
+    const hole = `linear-gradient(#000 0 0) center / calc(100% - ${borderPx * 2}px) calc(100% - ${borderPx * 2}px) no-repeat`;
+    const full = `linear-gradient(#000 0 0) 0 0 / 100% 100% no-repeat`;
+    canvas.style.cssText =
+      `position:absolute;inset:-${borderPx}px;pointer-events:none;z-index:-1;` +
+      `-webkit-mask:${full},${hole};-webkit-mask-composite:xor;` +
+      `mask:${full},${hole};mask-composite:exclude;`;
+  } else {
+    canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;";
+  }
   if (getComputedStyle(el).position === "static") el.style.position = "relative";
-  if (isBorder) el.style.width = "fit-content";
+  if (isBorder) {
+    el.style.width = "fit-content";
+    // Match the element's rounded corners so the rim follows a pill / radius.
+    const radius = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
+    if (radius) canvas.style.borderRadius = (radius + borderPx) + "px";
+  }
   el.prepend(canvas);
 
   const gl = canvas.getContext("webgl", { premultipliedAlpha: false, alpha: true });
