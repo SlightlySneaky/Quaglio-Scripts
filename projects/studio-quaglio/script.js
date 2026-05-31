@@ -130,6 +130,10 @@ function bootStudioQuaglio() {
   safeInit("Preloader",          '.preloader',              initPreloader);
   safeInit("NavAnimation",       '[data-theme-nav="true"]', initNavAnimation);
   safeInit("SplitTextAndReveal", '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]', initSplitTextAndReveal);
+
+  // Pages without a preloader never reach initAllScripts via initPreloader,
+  // so run it directly here as a fallback.
+  if (!document.querySelector('.preloader')) initAllScripts();
 }
 
 // Run immediately if the DOM is already parsed (the script may be injected
