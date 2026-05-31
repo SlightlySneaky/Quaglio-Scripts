@@ -55,11 +55,13 @@
     document.head.appendChild(s);
   }
 
-  // script.js needs these globals on its first lines (it registers GSAP
-  // plugins and calls barba.init immediately).
+  // Both scripts register GSAP plugins on their first lines. Staging
+  // (script.js) additionally calls barba.init immediately, so it also needs
+  // window.barba; production (script.prod.js) is pre-Barba and must NOT wait
+  // for it (Barba isn't loaded there — waiting would stall 10s before inject).
   function ready() {
-    return window.gsap && window.ScrollTrigger && window.Observer
-      && window.CustomEase && window.barba;
+    var core = window.gsap && window.ScrollTrigger && window.Observer && window.CustomEase;
+    return staging ? (core && window.barba) : core;
   }
 
   if (ready()) {
