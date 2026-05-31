@@ -1009,7 +1009,7 @@ function initFormModal() {
 }
 */
 
-
+/*
 // ============================================
 // METAL SHADER
 // Usage: add data-metal (or data-metal="gold" / "bronze" / "silver" / "dark")
@@ -1254,3 +1254,4 @@ function initMetalShader(el) {
   });
   io.observe(canvas);
 }
+  */
