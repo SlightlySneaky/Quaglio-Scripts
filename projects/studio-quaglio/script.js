@@ -38,7 +38,6 @@ function initOnceFunctions() {
   onceFunctionsInitialized = true;
 
   // Runs once on first load
-  if (has('[data-theme-nav="true"]'))       initNavAnimation();
   if (has('[data-button-animate-chars]'))   initButtonCharacterStagger();
 }
 
@@ -59,6 +58,7 @@ function initAfterEnterFunctions(next) {
   // Runs after enter animation completes
   // if (has('[data-something]')) initSomething();
     // Runs after enter animation completes
+  if (document.querySelector('[data-theme-nav="true"]'))    initNavAnimation();
   if (has('[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]')) initSplitTextAndReveal();
   if (has('[data-hero-parallax]'))                initHeroParallax();
   if (has('[data-parallax="trigger"]'))           initGlobalParallax();
