@@ -1097,6 +1097,7 @@ function initMetalShader(el) {
     ? `position:absolute;inset:-${borderPx}px;pointer-events:none;z-index:-1;`
     : "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;";
   if (getComputedStyle(el).position === "static") el.style.position = "relative";
+  if (isBorder) el.style.width = "fit-content";
   el.prepend(canvas);
 
   const gl = canvas.getContext("webgl");
