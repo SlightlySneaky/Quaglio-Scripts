@@ -401,23 +401,20 @@ function initNavAnimation() {
 
   gsap.registerPlugin(ScrollTrigger);
 
-  const nav = document.querySelector('[data-theme-nav="true"]');
+  // Use [data-theme-nav] not [data-theme-nav="true"] — applyThemeFrom changes
+  // the value to "dark"/"light" before this runs, so "true" never matches again
+  const nav = document.querySelector('[data-theme-nav]');
   if (!nav) return;
 
-  const THEME_DARK  = "u-theme-dark";
-  const THEME_LIGHT = "u-theme-light";
-
   const getThemeForSection = (section) => {
-    if (section.classList.contains(THEME_DARK))  return THEME_DARK;
-    if (section.classList.contains(THEME_LIGHT)) return THEME_LIGHT;
-    if (section.querySelector(`.${THEME_DARK}`))  return THEME_DARK;
-    if (section.querySelector(`.${THEME_LIGHT}`)) return THEME_LIGHT;
+    if (section.classList.contains("u-theme-dark"))  return "u-theme-light";
+    if (section.classList.contains("u-theme-light")) return "u-theme-dark";
     return null;
   };
 
   const applyNavTheme = (theme) => {
     if (!theme) return;
-    nav.classList.remove(THEME_DARK, THEME_LIGHT);
+    nav.classList.remove("u-theme-dark", "u-theme-light");
     nav.classList.add(theme);
   };
 
@@ -438,7 +435,7 @@ function initNavAnimation() {
 
   ScrollTrigger.refresh();
   requestAnimationFrame(() => {
-    const y = window.innerHeight * 0.3;
+    const y = window.innerHeight * 0.05;
     const active = [...sections].find((s) => {
       const r = s.getBoundingClientRect();
       return r.top <= y && r.bottom >= y;
