@@ -1039,78 +1039,142 @@ function initFormModal() {
 //        to position:relative (or leave it — the script handles it).
 // ============================================
 function initMetalShader(el) {
+  // Port of the "Plasma" effect from metal.jakubantalik.com: four sine bands
+  // warped by a simplex-noise FBM field, mapped through a 5-stop colour palette.
   const VERT = `
-    attribute vec2 a_pos;
-    void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }
+    attribute vec2 a_position;
+    void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
   `;
 
   const FRAG = `
     precision highp float;
-    uniform float u_t;
-    uniform vec2  u_res;
-    uniform vec3  u_lo;
-    uniform vec3  u_hi;
+    uniform vec2  u_resolution;
+    uniform float u_time;
+    uniform vec3  u_color1, u_color2, u_color3, u_color4, u_color5;
+    uniform float u_intensity, u_scale, u_direction, u_distortion, u_complexity;
+    uniform float u_vignette, u_vigOpacity, u_blur, u_shaderOpacity;
 
-    float hash(vec2 p) {
-      p = fract(p * vec2(234.34, 435.345));
-      p += dot(p, p + 34.23);
-      return fract(p.x * p.y);
+    vec3 mod289(vec3 x)   { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec2 mod289v2(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec3 permute(vec3 x)  { return mod289((x * 34.0 + 1.0) * x); }
+
+    float snoise(vec2 v) {
+      const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                          -0.577350269189626, 0.024390243902439);
+      vec2 i  = floor(v + dot(v, C.yy));
+      vec2 x0 = v - i + dot(i, C.xx);
+      vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+      vec4 x12 = x0.xyxy + C.xxzz; x12.xy -= i1;
+      i = mod289v2(i);
+      vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+      vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
+      m = m * m; m = m * m;
+      vec3 x_ = 2.0 * fract(p * C.www) - 1.0;
+      vec3 h = abs(x_) - 0.5;
+      vec3 ox = floor(x_ + 0.5);
+      vec3 a0 = x_ - ox;
+      m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
+      vec3 g;
+      g.x  = a0.x * x0.x + h.x * x0.y;
+      g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+      return 130.0 * dot(m, g);
     }
 
-    float noise(vec2 p) {
-      vec2 i = floor(p), f = fract(p);
-      f = f * f * (3.0 - 2.0 * f);
-      return mix(
-        mix(hash(i),              hash(i + vec2(1.0, 0.0)), f.x),
-        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
-        f.y
-      );
+    float fbm(vec2 p, float oct) {
+      float val = 0.0, amp = 0.5;
+      int n = int(oct);
+      for (int i = 0; i < 7; i++) {
+        if (i >= n) break;
+        val += amp * snoise(p);
+        p *= 2.0; amp *= 0.5;
+      }
+      return val;
     }
 
-    float fbm(vec2 p) {
-      float v = 0.0, a = 0.5;
-      for (int i = 0; i < 6; i++) { v += a * noise(p); p *= 2.1; a *= 0.5; }
-      return v;
+    float nfbm(vec2 p) { return fbm(p, 3.0 + u_complexity * 4.0); }
+
+    vec3 palette(float t) {
+      t = clamp(t, 0.0, 1.0);
+      t = t * t * (3.0 - 2.0 * t);
+      float k = 64.0;
+      float w1 = exp(-k * t * t);
+      float w2 = exp(-k * (t - 0.25) * (t - 0.25));
+      float w3 = exp(-k * (t - 0.5)  * (t - 0.5));
+      float w4 = exp(-k * (t - 0.75) * (t - 0.75));
+      float w5 = exp(-k * (t - 1.0)  * (t - 1.0));
+      float total = w1 + w2 + w3 + w4 + w5 + 0.0001;
+      return (u_color1 * w1 + u_color2 * w2 + u_color3 * w3 +
+              u_color4 * w4 + u_color5 * w5) / total;
+    }
+
+    vec2 warp(vec2 p, float t) {
+      float str = u_distortion * 2.0;
+      return vec2(
+        nfbm(p + vec2(t * 0.1, 0.0)),
+        nfbm(p + vec2(0.0, t * 0.12) + 5.0)
+      ) * str;
+    }
+
+    vec3 computeEffect(vec2 uv, float aspect, float t) {
+      vec2 p = (uv - 0.5) * u_scale;
+      p.x *= aspect;
+      p += vec2(cos(u_direction), sin(u_direction)) * t * 0.15;
+      float freq = 3.0 + u_complexity * 8.0;
+      float val = 0.0;
+      val += sin(p.x * freq + t);
+      val += sin(p.y * freq + t * 1.3);
+      val += sin((p.x + p.y) * freq * 0.7 + t * 0.7);
+      val += sin(length(p) * freq * 0.8 - t * 1.5);
+      vec2 w = warp(p, t);
+      val += (w.x + w.y) * u_distortion;
+      val = val * 0.2 * u_intensity + 0.5;
+      return palette(clamp(val, 0.0, 1.0));
     }
 
     void main() {
-      vec2 uv = gl_FragCoord.xy / u_res;
-      uv.y = 1.0 - uv.y;
-      float t = u_t * 0.25;
+      vec2 uv = gl_FragCoord.xy / u_resolution;
+      float aspect = u_resolution.x / u_resolution.y;
+      float t = u_time;
 
-      vec2 q = vec2(fbm(uv), fbm(uv + vec2(5.2, 1.3)));
-      vec2 r = vec2(
-        fbm(uv + 4.0 * q + vec2(1.7 + t, 9.2)),
-        fbm(uv + 4.0 * q + vec2(8.3, 2.8 + t * 0.5))
-      );
-      float f = fbm(uv + 4.0 * r);
+      vec3 col;
+      if (u_blur < 0.01) {
+        col = computeEffect(uv, aspect, t);
+      } else {
+        float r = u_blur * 0.02;
+        col  = computeEffect(uv,                 aspect, t) * 0.4;
+        col += computeEffect(uv + vec2( r, 0.0), aspect, t) * 0.15;
+        col += computeEffect(uv + vec2(-r, 0.0), aspect, t) * 0.15;
+        col += computeEffect(uv + vec2(0.0,  r), aspect, t) * 0.15;
+        col += computeEffect(uv + vec2(0.0, -r), aspect, t) * 0.15;
+      }
 
-      float metal  = smoothstep(0.2, 0.9, f);
-      float hi     = pow(metal, 5.0);
+      col = pow(col, vec3(1.3));
 
-      // Anisotropic brushed streaks
-      vec2 suv = uv;
-      suv.x += fbm(uv * vec2(1.0, 4.0) + t * 0.15) * 0.25;
-      float streak = pow(noise(suv * vec2(1.0, 10.0) + vec2(t * 0.08, 0.0)), 2.0);
+      float edgeDist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+      float vigPx = 40.0 / min(u_resolution.x, u_resolution.y);
+      float vigRange = vigPx * (1.0 + u_vignette * 3.0);
+      float vig = edgeDist * edgeDist / (vigRange * vigRange);
+      vig = smoothstep(0.0, 1.0, vig);
+      col *= mix(1.0, vig, u_vignette * u_vigOpacity);
 
-      vec3 col = mix(u_lo, u_hi, metal);
-      col += hi     * 0.5;
-      col += streak * 0.08;
-      col -= pow(1.0 - metal, 3.0) * 0.15;
-
-      gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+      gl_FragColor = vec4(col, u_shaderOpacity);
     }
   `;
 
-  const PRESETS = {
-    chrome: { lo: [0.12, 0.12, 0.14], hi: [0.88, 0.90, 0.94] },
-    gold:   { lo: [0.22, 0.13, 0.02], hi: [0.96, 0.82, 0.32] },
-    bronze: { lo: [0.18, 0.09, 0.02], hi: [0.76, 0.50, 0.24] },
-    silver: { lo: [0.08, 0.08, 0.10], hi: [0.92, 0.92, 0.96] },
-    dark:   { lo: [0.04, 0.04, 0.05], hi: [0.40, 0.42, 0.46] },
-  };
+  function hexToRgb(h) {
+    const n = parseInt(h.slice(1), 16);
+    return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255];
+  }
 
-  const preset   = PRESETS[el.dataset.metal] || PRESETS.chrome;
+  // Faithful preset values pulled from the reference site (dark mode).
+  const PRESETS = {
+    chromatic: { colors: ["#000000","#aae8ff","#c5fe9e","#f7888d","#0d0d0d"], intensity: 2, scale: 1.6, direction: 80, distortion: 0.3, complexity: 0.68, vignette: 0.26, vigOpacity: 0.6, blur: 1, shaderOpacity: 1,    speed: 1.2 },
+    silver:    { colors: ["#000000","#dedede","#747270","#e5e5e5","#0d0d0d"], intensity: 2, scale: 2.5, direction: 80, distortion: 0.3, complexity: 0.68, vignette: 0.26, vigOpacity: 0.6, blur: 1, shaderOpacity: 0.88, speed: 1.2 },
+    gold:      { colors: ["#000000","#ffffff","#ffffff","#f7d488","#0d0d0d"], intensity: 2, scale: 2.5, direction: 80, distortion: 0.3, complexity: 0.68, vignette: 0.26, vigOpacity: 0.6, blur: 1, shaderOpacity: 0.92, speed: 1   },
+  };
+  PRESETS.chrome = PRESETS.silver; // alias
+
+  const preset   = PRESETS[el.dataset.metal] || PRESETS.chromatic;
   const borderPx = parseInt(el.getAttribute("data-metal-border") || "0") || 0;
   const isBorder = borderPx > 0;
 
@@ -1122,7 +1186,7 @@ function initMetalShader(el) {
   if (isBorder) el.style.width = "fit-content";
   el.prepend(canvas);
 
-  const gl = canvas.getContext("webgl");
+  const gl = canvas.getContext("webgl", { premultipliedAlpha: false, alpha: true });
   if (!gl) return;
 
   function compile(type, src) {
@@ -1138,20 +1202,34 @@ function initMetalShader(el) {
   gl.linkProgram(prog);
   gl.useProgram(prog);
 
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
   const buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
-  const posLoc = gl.getAttribLocation(prog, "a_pos");
+  const posLoc = gl.getAttribLocation(prog, "a_position");
   gl.enableVertexAttribArray(posLoc);
   gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
-  const uT   = gl.getUniformLocation(prog, "u_t");
-  const uRes = gl.getUniformLocation(prog, "u_res");
-  const uLo  = gl.getUniformLocation(prog, "u_lo");
-  const uHi  = gl.getUniformLocation(prog, "u_hi");
+  const u    = (name) => gl.getUniformLocation(prog, name);
+  const uTime = u("u_time");
+  const uRes  = u("u_resolution");
 
-  gl.uniform3fv(uLo, preset.lo);
-  gl.uniform3fv(uHi, preset.hi);
+  gl.uniform3fv(u("u_color1"), hexToRgb(preset.colors[0]));
+  gl.uniform3fv(u("u_color2"), hexToRgb(preset.colors[1]));
+  gl.uniform3fv(u("u_color3"), hexToRgb(preset.colors[2]));
+  gl.uniform3fv(u("u_color4"), hexToRgb(preset.colors[3]));
+  gl.uniform3fv(u("u_color5"), hexToRgb(preset.colors[4]));
+  gl.uniform1f(u("u_intensity"),     preset.intensity);
+  gl.uniform1f(u("u_scale"),         preset.scale);
+  gl.uniform1f(u("u_direction"),     preset.direction * Math.PI / 180);
+  gl.uniform1f(u("u_distortion"),    preset.distortion);
+  gl.uniform1f(u("u_complexity"),    preset.complexity);
+  gl.uniform1f(u("u_vignette"),      preset.vignette);
+  gl.uniform1f(u("u_vigOpacity"),    preset.vigOpacity);
+  gl.uniform1f(u("u_blur"),          preset.blur);
+  gl.uniform1f(u("u_shaderOpacity"), preset.shaderOpacity);
 
   const dpr = Math.min(devicePixelRatio, 2);
   const ro = new ResizeObserver(() => {
@@ -1165,7 +1243,7 @@ function initMetalShader(el) {
   let raf = null;
 
   function tick() {
-    gl.uniform1f(uT,  (performance.now() - t0) / 1000);
+    gl.uniform1f(uTime, (performance.now() - t0) / 1000 * preset.speed);
     gl.uniform2f(uRes, canvas.width, canvas.height);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     raf = requestAnimationFrame(tick);
