@@ -112,6 +112,7 @@ function initAllScripts() {
   // Global, lightweight — safe to run right away.
   safeInit("AccordionCSS",    '[data-accordion-css-init]', initAccordionCSS);
   safeInit("HeroParallax",    '[data-hero-parallax]',      initHeroParallax);
+  safeInit("ProjectItemHover", '.project_item',            initProjectItemHover);
 
   // Per-component — built when that section approaches the viewport.
   lazyOnce("GlobalParallax",    '[data-parallax="trigger"]',     initGlobalParallax);
@@ -794,6 +795,23 @@ function initButtonCharacterStagger() {
       }
 
       button.appendChild(span);
+    });
+  });
+}
+
+
+// PROJECT ITEM HOVER (.project_item → .img)
+// ============================================
+function initProjectItemHover() {
+  document.querySelectorAll(".project_item").forEach((item) => {
+    const img = item.querySelector(".img");
+    if (!img) return;
+
+    item.addEventListener("mouseenter", () => {
+      gsap.to(img, { scale: 1.06, duration: 0.6, ease: "smooth", overwrite: "auto" });
+    });
+    item.addEventListener("mouseleave", () => {
+      gsap.to(img, { scale: 1,    duration: 0.5, ease: "smooth", overwrite: "auto" });
     });
   });
 }

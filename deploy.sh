@@ -32,7 +32,7 @@ promote_one () {
 }
 
 if [ "$TARGET" = "prod" ] || [ "$TARGET" = "production" ]; then
-  if [ -n "$PROJECT" ]; then
+  if [ -n "$PROJECT" ] && [ "$PROJECT" != "all" ]; then
     echo "→ Promoting '$PROJECT' to PRODUCTION..."
     promote_one "$PROJECT"
   else
@@ -44,7 +44,11 @@ if [ "$TARGET" = "prod" ] || [ "$TARGET" = "production" ]; then
   MESSAGE="deploy(prod): ${PROJECT:-all} — $(date '+%Y-%m-%d %H:%M:%S')"
 else
   echo "→ Deploying to STAGING (.webflow.io)..."
-  MESSAGE="deploy(staging): $(date '+%Y-%m-%d %H:%M:%S')"
+  if [ -n "$PROJECT" ] && [ "$PROJECT" != "all" ]; then
+    MESSAGE="deploy(staging): $PROJECT — $(date '+%Y-%m-%d %H:%M:%S')"
+  else
+    MESSAGE="deploy(staging): $(date '+%Y-%m-%d %H:%M:%S')"
+  fi
 fi
 
 # ---- Git sync (local changes win on conflict) ----

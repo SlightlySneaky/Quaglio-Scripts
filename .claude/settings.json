@@ -15,7 +15,8 @@
       "Bash(cd \"/Users/ethanxrecruiter/Q/Quaglio Scripts/projects/studio-quaglio/colorflow\" && rm -f assets/*.png && echo \"removed bogus 404 png files\" && echo \"=== remaining assets ===\" && ls -1 assets/)",
       "Bash(./deploy.sh)",
       "Bash(node -e ' *)",
-      "Bash(curl -s __TRACKED_VAR__/embed.html?cb=__TRACKED_VAR__)"
+      "Bash(curl -s __TRACKED_VAR__/embed.html?cb=__TRACKED_VAR__)",
+      "Bash(chmod +x \"/Users/ethanxrecruiter/Q/Quaglio Scripts/push.sh\")"
     ],
     "additionalDirectories": [
       "/Users/ethanxrecruiter/Q/Quaglio Scripts/projects/studio-quaglio/colorflow/assets"
