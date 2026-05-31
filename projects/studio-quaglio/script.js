@@ -112,10 +112,10 @@ function initAllScripts() {
   // Global, lightweight — safe to run right away.
   safeInit("AccordionCSS",    '[data-accordion-css-init]', initAccordionCSS);
   safeInit("HeroParallax",    '[data-hero-parallax]',      initHeroParallax);
+  safeInit("GlobalParallax",  '[data-parallax="trigger"]', initGlobalParallax);
   safeInit("ProjectItemHover", '.project_item',            initProjectItemHover);
 
   // Per-component — built when that section approaches the viewport.
-  lazyOnce("GlobalParallax",    '[data-parallax="trigger"]',     initGlobalParallax);
   lazyOnce("TestimonialSlider", '[data-swiper-group="1"]',       initTestimonialSlider);
   // lazyOnce("StickyTitleScroll", '[data-sticky-title="wrap"]',  initStickyTitleScroll);
   lazyOnce("DraggableMarquee",  '[data-draggable-marquee-init]', initDraggableMarquee);
