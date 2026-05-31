@@ -9,6 +9,7 @@ history.scrollRestoration = "manual";
 let lenis = null;
 let nextPage = document;
 let onceFunctionsInitialized = false;
+let colorflowPreloadIframe = null;
 
 const hasLenis = typeof window.Lenis !== "undefined";
 const hasScrollTrigger = typeof window.ScrollTrigger !== "undefined";
@@ -282,6 +283,29 @@ function prepareForTransition(parent, current, next){
 // BARBA HOOKS + INIT
 // -----------------------------------------
 
+barba.hooks.before(data => {
+  // Preload colorflow as early as possible so WebGL has the full transition to initialise.
+  // opacity:0 (not display:none) lets the GPU actually create the WebGL context.
+  const parser = new DOMParser();
+  const nextDoc = parser.parseFromString(data.next.html, 'text/html');
+  const nextColorflow = nextDoc.querySelector('iframe[src*="colorflow"]');
+
+  if (nextColorflow) {
+    colorflowPreloadIframe = document.createElement('iframe');
+    colorflowPreloadIframe.src = nextColorflow.src;
+    Object.assign(colorflowPreloadIframe.style, {
+      position: 'fixed',
+      inset: '0',
+      width: '100%',
+      height: '100%',
+      opacity: '0',
+      pointerEvents: 'none',
+      zIndex: '-1',
+    });
+    document.body.appendChild(colorflowPreloadIframe);
+  }
+});
+
 barba.hooks.beforeEnter(data => {
   // Position new container on top
   gsap.set(data.next.container, {
@@ -290,11 +314,11 @@ barba.hooks.beforeEnter(data => {
     left: 0,
     right: 0,
   });
-  
+
   if (lenis && typeof lenis.stop === "function") {
     lenis.stop();
   }
-  
+
   initBeforeEnterFunctions(data.next.container);
   applyThemeFrom(data.next.container);
 });
@@ -310,17 +334,23 @@ barba.hooks.enter(data => {
 })
 
 barba.hooks.afterEnter(data => {
+  // Remove the preload iframe now that the real colorflow in the new container is live
+  if (colorflowPreloadIframe) {
+    colorflowPreloadIframe.remove();
+    colorflowPreloadIframe = null;
+  }
+
   // Run page functions
   initAfterEnterFunctions(data.next.container);
-  
+
   // Settle
   if(hasLenis){
     lenis.resize();
-    lenis.start();    
+    lenis.start();
   }
-  
+
   if(hasScrollTrigger){
-    ScrollTrigger.refresh(); 
+    ScrollTrigger.refresh();
   }
 });
 
