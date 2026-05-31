@@ -3,7 +3,9 @@
      AFTER the GSAP CDN scripts).
 
      Staging  (.webflow.io)  → loads script.js       (live working file, always fresh)
+                              → prints a STAGING banner to the console
      Production (custom domain) → loads script.prod.js (frozen snapshot)
+                              → silent, no console output
 
      Deploy:
        ./deploy.sh                       push edits → updates STAGING only
@@ -14,6 +16,15 @@
   var BASE = 'https://quaglio-scripts.vercel.app/projects/studio-quaglio';
   // .webflow.io (and Designer preview) = staging; custom domain = production
   var staging = /\.webflow\.io$/.test(location.hostname);
+
+  if (staging) {
+    console.log(
+      '%c STAGING %c Studio Quaglio — testing mode. Edits to script.js are live here only.',
+      'background:#e67e22;color:#fff;font-weight:700;padding:2px 6px;border-radius:3px',
+      'color:#e67e22;font-weight:600'
+    );
+  }
+
   var file = staging ? 'script.js' : 'script.prod.js';
   var bust = staging ? '?t=' + Date.now() : '';  // staging always loads fresh
   var s = document.createElement('script');
