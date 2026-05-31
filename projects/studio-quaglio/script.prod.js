@@ -121,6 +121,9 @@ function initAllScripts() {
   lazyOnce("ButtonCharStagger", '[data-button-animate-chars]',   initButtonCharacterStagger);
   // lazyOnce("FormModal",         '[form-wrap]',                 initFormModal);
   lazyOnce("SwiperSlider",      '[data-swiper-group="2"]',       initSwiperSlider);
+
+  // Per-element WebGL — each canvas spins up only as it nears the viewport.
+  lazyEach("MetalShader", '[data-metal]', initMetalShader);
 }
 
 function bootStudioQuaglio() {
@@ -1001,5 +1004,149 @@ function initFormModal() {
       if (text) text.style.color = "white";
     });
   });
+}
+
+
+// ============================================
+// METAL SHADER
+// Usage: add data-metal (or data-metal="gold" / "bronze" / "silver" / "dark")
+//        to any div in Webflow. The canvas overlays the element; set the div
+//        to position:relative (or leave it — the script handles it).
+// ============================================
+function initMetalShader(el) {
+  const VERT = `
+    attribute vec2 a_pos;
+    void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }
+  `;
+
+  const FRAG = `
+    precision highp float;
+    uniform float u_t;
+    uniform vec2  u_res;
+    uniform vec3  u_lo;
+    uniform vec3  u_hi;
+
+    float hash(vec2 p) {
+      p = fract(p * vec2(234.34, 435.345));
+      p += dot(p, p + 34.23);
+      return fract(p.x * p.y);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p), f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(
+        mix(hash(i),              hash(i + vec2(1.0, 0.0)), f.x),
+        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+        f.y
+      );
+    }
+
+    float fbm(vec2 p) {
+      float v = 0.0, a = 0.5;
+      for (int i = 0; i < 6; i++) { v += a * noise(p); p *= 2.1; a *= 0.5; }
+      return v;
+    }
+
+    void main() {
+      vec2 uv = gl_FragCoord.xy / u_res;
+      uv.y = 1.0 - uv.y;
+      float t = u_t * 0.25;
+
+      vec2 q = vec2(fbm(uv), fbm(uv + vec2(5.2, 1.3)));
+      vec2 r = vec2(
+        fbm(uv + 4.0 * q + vec2(1.7 + t, 9.2)),
+        fbm(uv + 4.0 * q + vec2(8.3, 2.8 + t * 0.5))
+      );
+      float f = fbm(uv + 4.0 * r);
+
+      float metal  = smoothstep(0.2, 0.9, f);
+      float hi     = pow(metal, 5.0);
+
+      // Anisotropic brushed streaks
+      vec2 suv = uv;
+      suv.x += fbm(uv * vec2(1.0, 4.0) + t * 0.15) * 0.25;
+      float streak = pow(noise(suv * vec2(1.0, 10.0) + vec2(t * 0.08, 0.0)), 2.0);
+
+      vec3 col = mix(u_lo, u_hi, metal);
+      col += hi     * 0.5;
+      col += streak * 0.08;
+      col -= pow(1.0 - metal, 3.0) * 0.15;
+
+      gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+    }
+  `;
+
+  const PRESETS = {
+    chrome: { lo: [0.12, 0.12, 0.14], hi: [0.88, 0.90, 0.94] },
+    gold:   { lo: [0.22, 0.13, 0.02], hi: [0.96, 0.82, 0.32] },
+    bronze: { lo: [0.18, 0.09, 0.02], hi: [0.76, 0.50, 0.24] },
+    silver: { lo: [0.08, 0.08, 0.10], hi: [0.92, 0.92, 0.96] },
+    dark:   { lo: [0.04, 0.04, 0.05], hi: [0.40, 0.42, 0.46] },
+  };
+
+  const preset = PRESETS[el.dataset.metal] || PRESETS.chrome;
+
+  const canvas = document.createElement("canvas");
+  canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;";
+  if (getComputedStyle(el).position === "static") el.style.position = "relative";
+  el.prepend(canvas);
+
+  const gl = canvas.getContext("webgl");
+  if (!gl) return;
+
+  function compile(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return s;
+  }
+
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const posLoc = gl.getAttribLocation(prog, "a_pos");
+  gl.enableVertexAttribArray(posLoc);
+  gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+  const uT   = gl.getUniformLocation(prog, "u_t");
+  const uRes = gl.getUniformLocation(prog, "u_res");
+  const uLo  = gl.getUniformLocation(prog, "u_lo");
+  const uHi  = gl.getUniformLocation(prog, "u_hi");
+
+  gl.uniform3fv(uLo, preset.lo);
+  gl.uniform3fv(uHi, preset.hi);
+
+  const dpr = Math.min(devicePixelRatio, 2);
+  const ro = new ResizeObserver(() => {
+    canvas.width  = el.offsetWidth  * dpr;
+    canvas.height = el.offsetHeight * dpr;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  });
+  ro.observe(el);
+
+  const t0 = performance.now();
+  let raf = null;
+
+  function tick() {
+    gl.uniform1f(uT,  (performance.now() - t0) / 1000);
+    gl.uniform2f(uRes, canvas.width, canvas.height);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    raf = requestAnimationFrame(tick);
+  }
+
+  // Pause RAF when the canvas scrolls out of view.
+  const io = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) { if (!raf) tick(); }
+    else { cancelAnimationFrame(raf); raf = null; }
+  });
+  io.observe(canvas);
+}
 }
 */
