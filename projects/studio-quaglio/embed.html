@@ -1,0 +1,23 @@
+<!-- ============================================================
+     Studio Quaglio — Webflow embed (paste in Footer, load last,
+     AFTER the GSAP CDN scripts).
+
+     Staging  (.webflow.io)  → loads script.js       (live working file, always fresh)
+     Production (custom domain) → loads script.prod.js (frozen snapshot)
+
+     Deploy:
+       ./deploy.sh                       push edits → updates STAGING only
+       ./deploy.sh prod studio-quaglio   snapshot script.js → script.prod.js → goes LIVE
+     ============================================================ -->
+<script>
+(function () {
+  var BASE = 'https://quaglio-scripts.vercel.app/projects/studio-quaglio';
+  // .webflow.io (and Designer preview) = staging; custom domain = production
+  var staging = /\.webflow\.io$/.test(location.hostname);
+  var file = staging ? 'script.js' : 'script.prod.js';
+  var bust = staging ? '?t=' + Date.now() : '';  // staging always loads fresh
+  var s = document.createElement('script');
+  s.src = BASE + '/' + file + bust;
+  document.body.appendChild(s);
+})();
+</script>
