@@ -42,19 +42,19 @@ confirm_push() {
   local target="$1"
   local project="$2"
 
-  echo ""
-  echo "  ─────────────────────────────────────────────"
-  echo "  Ready to push '$project' to $(echo "$target" | tr '[:lower:]' '[:upper:]')."
-  echo "  ─────────────────────────────────────────────"
-  echo ""
-  echo "    y) Yes, push to $target"
+  echo "" >&2
+  echo "  ─────────────────────────────────────────────" >&2
+  echo "  Ready to push '$project' to $(echo "$target" | tr '[:lower:]' '[:upper:]')." >&2
+  echo "  ─────────────────────────────────────────────" >&2
+  echo "" >&2
+  echo "    y) Yes, push to $target" >&2
   if [ "$target" = "staging" ]; then
-    echo "    p) Switch to prod instead"
+    echo "    p) Switch to prod instead" >&2
   else
-    echo "    s) Switch to staging instead"
+    echo "    s) Switch to staging instead" >&2
   fi
-  echo "    n) Abort"
-  echo ""
+  echo "    n) Abort" >&2
+  echo "" >&2
   read -r -p "  Choice: " ans
 
   case "$ans" in
