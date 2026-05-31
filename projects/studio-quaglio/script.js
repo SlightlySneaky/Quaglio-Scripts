@@ -44,9 +44,16 @@ function initOnceFunctions() {
 
 function initBeforeEnterFunctions(next) {
   nextPage = next || document;
-  
-  // Runs before the enter animation
-  // if (has('[data-something]')) initSomething();
+
+  // On return navigations (not first load), skip the colorflow iframe fade-in
+  // so there's no freeze — the matching background gradient covers the gap
+  if (onceFunctionsInitialized) {
+    const colorflowIframe = nextPage.querySelector('iframe[src*="colorflow"]');
+    if (colorflowIframe) {
+      colorflowIframe.style.transition = 'none';
+      colorflowIframe.style.opacity = '1';
+    }
+  }
 }
 
 function initAfterEnterFunctions(next) {
