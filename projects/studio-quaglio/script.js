@@ -36,7 +36,7 @@ function initOnceFunctions() {
   initLenis();
   if (onceFunctionsInitialized) return;
   onceFunctionsInitialized = true;
-  
+
   // Runs once on first load
   if (has('[data-theme-nav="true"]'))       initNavAnimation();
   if (has('[data-button-animate-chars]'))   initButtonCharacterStagger();
@@ -51,7 +51,7 @@ function initBeforeEnterFunctions(next) {
 
 function initAfterEnterFunctions(next) {
   nextPage = next || document;
-  
+
   // Runs after enter animation completes
   // if (has('[data-something]')) initSomething();
     // Runs after enter animation completes
@@ -62,12 +62,12 @@ function initAfterEnterFunctions(next) {
   if (has('[data-swiper-group="2"]'))             initSwiperSlider();
   if (has('[data-accordion-css-init]'))           initAccordionCSS();
   if (has('[data-draggable-marquee-init]'))       initDraggableMarquee();
-  
-  
+
+
   if(hasLenis){
     lenis.resize();
   }
-  
+
   if (hasScrollTrigger) {
     ScrollTrigger.refresh();
   }
@@ -279,7 +279,6 @@ barba.init({
 });
 
 
-
 // -----------------------------------------
 // GENERIC + HELPERS
 // -----------------------------------------
@@ -385,51 +384,6 @@ function initBarbaNavUpdate(data) {
 // YOUR FUNCTIONS GO BELOW HERE
 // -----------------------------------------
 
-
-// ============================================
-// LENIS
-// ============================================
-function initLenis() {
-  const lenis = new Lenis();
-  lenis.on("scroll", ScrollTrigger.update);
-  gsap.ticker.add((time) => { lenis.raf(time * 1000); });
-  gsap.ticker.lagSmoothing(0);
-}
-
-
-// ============================================
-// PRELOADER (.preloader)
-// ============================================
-function initPreloader() {
-  const wrap = document.querySelector(".preloader");
-  if (!wrap) return;
-
-  const DUR  = 0.9;
-  const EASE = "cubic-bezier(0.87, 0, 0.13, 1)";
-
-  wrap.style.display    = "flex";
-  wrap.style.opacity    = "1";
-  wrap.style.filter     = "blur(0px)";
-  wrap.style.willChange = "opacity, filter";
-
-  function reveal() {
-    wrap.style.transition = `opacity ${DUR}s ${EASE}, filter ${DUR}s ${EASE}`;
-    requestAnimationFrame(() => {
-      wrap.style.opacity = "0";
-      wrap.style.filter  = "blur(24px)";
-    });
-    window.setTimeout(initAllScripts, 0);
-    window.setTimeout(() => {
-      wrap.style.display    = "none";
-      wrap.style.willChange = "auto";
-    }, DUR * 1000 + 50);
-  }
-
-  if (document.readyState === "complete") reveal();
-  else window.addEventListener("load", reveal, { once: true });
-}
-
-
 // ============================================
 // NAV ANIMATION
 // ============================================
@@ -475,6 +429,7 @@ function initNavAnimation() {
       });
     });
 
+    // Set correct theme on page load
     ScrollTrigger.refresh();
     requestAnimationFrame(() => {
       const y = window.innerHeight * 0.3;
@@ -501,6 +456,7 @@ function initSplitTextAndReveal() {
   gsap.registerPlugin(ScrollTrigger);
   if (hasSplitText) gsap.registerPlugin(SplitText);
 
+  // ---------- HEADINGS: split by characters ----------
   function setupHeading(heading) {
     const delayAttr  = parseFloat(heading.getAttribute("data-split-delay")) || 0;
     const isLoadAnim = heading.getAttribute("data-split-load") === "true";
@@ -538,6 +494,7 @@ function initSplitTextAndReveal() {
     });
   }
 
+  // ---------- BODY: split by lines ----------
   function setupBody(body) {
     const delayAttr  = parseFloat(body.getAttribute("data-split-delay")) || 0.1;
     const isLoadAnim = body.getAttribute("data-split-load") === "true";
@@ -574,10 +531,13 @@ function initSplitTextAndReveal() {
     });
   }
 
+  // ---------- REVEAL BLOCKS: clip-path mask ----------
   function setupRevealBlock(block) {
     const delayAttr  = parseFloat(block.getAttribute("data-reveal-delay")) || 0.2;
     const isLoadAnim = block.getAttribute("data-reveal-load") === "true";
 
+    // Hide nested split text up front so the clip can't reveal it in plain
+    // form before its own (separately-observed) split setup has run.
     if (hasSplitText) {
       block.querySelectorAll("[split-heading]:not([hero]), [split-body]:not([hero])").forEach((el) => {
         if (!el.querySelector(".is-split-char, .is-split-line")) {
@@ -611,13 +571,13 @@ function initSplitTextAndReveal() {
     });
   }
 
+  // Build each element only as it nears the viewport — never all at once.
   if (hasSplitText) {
     lazyEach("SplitHeading", "[split-heading]:not([hero])", setupHeading);
     lazyEach("SplitBody",    "[split-body]:not([hero])",    setupBody);
   }
-  lazyEach("RevealBlock", "[reveal-block]", setupRevealBlock);
+  lazyEach("RevealBlock",    "[reveal-block]",              setupRevealBlock);
 }
-
 
 // ============================================
 // GLOBAL PARALLAX
