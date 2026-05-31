@@ -45,10 +45,11 @@ function initOnceFunctions() {
 function initBeforeEnterFunctions(next) {
   nextPage = next || document;
 
+  // Hide colorflow iframe during transition so it loads invisibly in the background
   const colorflowIframe = nextPage.querySelector('iframe[src*="colorflow"]');
   if (colorflowIframe) {
     colorflowIframe.style.transition = 'none';
-    colorflowIframe.style.opacity = '1';
+    colorflowIframe.style.opacity = '0';
   }
 }
 
@@ -66,6 +67,10 @@ function initAfterEnterFunctions(next) {
   if (has('[data-accordion-css-init]'))           initAccordionCSS();
   if (has('[data-draggable-marquee-init]'))       initDraggableMarquee();
 
+
+  // Reveal colorflow iframe now that WebGL has had the transition duration to initialise
+  const colorflowIframe = nextPage.querySelector('iframe[src*="colorflow"]');
+  if (colorflowIframe) colorflowIframe.style.opacity = '1';
 
   if(hasLenis){
     lenis.resize();
