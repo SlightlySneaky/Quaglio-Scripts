@@ -1110,10 +1110,14 @@ function initMetalShader(el) {
     dark:   { lo: [0.04, 0.04, 0.05], hi: [0.40, 0.42, 0.46] },
   };
 
-  const preset = PRESETS[el.dataset.metal] || PRESETS.chrome;
+  const preset   = PRESETS[el.dataset.metal] || PRESETS.chrome;
+  const borderPx = parseInt(el.getAttribute("data-metal-border") || "0") || 0;
+  const isBorder = borderPx > 0;
 
   const canvas = document.createElement("canvas");
-  canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;";
+  canvas.style.cssText = isBorder
+    ? `position:absolute;inset:-${borderPx}px;pointer-events:none;z-index:-1;`
+    : "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;";
   if (getComputedStyle(el).position === "static") el.style.position = "relative";
   el.prepend(canvas);
 
@@ -1150,8 +1154,8 @@ function initMetalShader(el) {
 
   const dpr = Math.min(devicePixelRatio, 2);
   const ro = new ResizeObserver(() => {
-    canvas.width  = el.offsetWidth  * dpr;
-    canvas.height = el.offsetHeight * dpr;
+    canvas.width  = (el.offsetWidth  + borderPx * 2) * dpr;
+    canvas.height = (el.offsetHeight + borderPx * 2) * dpr;
     gl.viewport(0, 0, canvas.width, canvas.height);
   });
   ro.observe(el);
