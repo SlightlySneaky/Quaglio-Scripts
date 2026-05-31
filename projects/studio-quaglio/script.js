@@ -36,7 +36,8 @@ function createEase(name) {
 gsap.registerPlugin(ScrollTrigger, Observer);
 ScrollTrigger.config({ ignoreMobileResize: true });
 
-window.addEventListener('load', () => ScrollTrigger.refresh());
+if (document.readyState === 'complete') ScrollTrigger.refresh();
+else window.addEventListener('load', () => ScrollTrigger.refresh(), { once: true });
 
 
 // ============================================
@@ -181,7 +182,7 @@ function initPreloader() {
 // NAV ANIMATION
 // ============================================
 function initNavAnimation() {
-  window.addEventListener("load", () => {
+  const runNav = () => {
     if (!window.gsap || !window.ScrollTrigger) return;
 
     gsap.registerPlugin(ScrollTrigger);
@@ -232,7 +233,9 @@ function initNavAnimation() {
       });
       if (active) applyNavTheme(getThemeForSection(active));
     });
-  });
+  };
+  if (document.readyState === "complete") runNav();
+  else window.addEventListener("load", runNav, { once: true });
 }
 
 

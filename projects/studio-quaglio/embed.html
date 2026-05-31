@@ -3,32 +3,44 @@
      AFTER the GSAP CDN scripts).
 
      Staging  (.webflow.io)  → loads script.js       (live working file, always fresh)
-                              → prints a STAGING banner to the console
      Production (custom domain) → loads script.prod.js (frozen snapshot)
-                              → silent, no console output
+
+     Loads via plain async injection. script.js is resilient to loading
+     after the window 'load' event, so no document.write is needed.
+
+     NOTE: both modes currently log to the console for verification.
+     Once confirmed, delete the PRODUCTION console.log block to silence
+     production (staging banner can stay).
 
      Deploy:
-       ./deploy.sh                       push edits → updates STAGING only
-       ./deploy.sh prod studio-quaglio   snapshot script.js → script.prod.js → goes LIVE
+       push-staging                push edits → updates STAGING only
+       push-prod studio-quaglio    snapshot script.js → script.prod.js → LIVE
      ============================================================ -->
 <script>
 (function () {
   var BASE = 'https://quaglio-scripts.vercel.app/projects/studio-quaglio';
   // .webflow.io (and Designer preview) = staging; custom domain = production
   var staging = /\.webflow\.io$/.test(location.hostname);
+  var file = staging ? 'script.js' : 'script.prod.js';
+  var bust = staging ? '?t=' + Date.now() : '';  // staging always loads fresh
 
   if (staging) {
     console.log(
-      '%c STAGING %c Studio Quaglio — testing mode. Edits to script.js are live here only.',
+      '%c STAGING %c Studio Quaglio — testing mode (' + file + ')',
       'background:#e67e22;color:#fff;font-weight:700;padding:2px 6px;border-radius:3px',
       'color:#e67e22;font-weight:600'
     );
+  } else {
+    // TEMP diagnostic — delete this block to make production silent
+    console.log(
+      '%c PRODUCTION %c Studio Quaglio — live (' + file + ') on ' + location.hostname,
+      'background:#2ecc71;color:#fff;font-weight:700;padding:2px 6px;border-radius:3px',
+      'color:#2ecc71;font-weight:600'
+    );
   }
 
-  var file = staging ? 'script.js' : 'script.prod.js';
-  var bust = staging ? '?t=' + Date.now() : '';  // staging always loads fresh
   var s = document.createElement('script');
   s.src = BASE + '/' + file + bust;
-  document.body.appendChild(s);
+  document.head.appendChild(s);
 })();
 </script>
