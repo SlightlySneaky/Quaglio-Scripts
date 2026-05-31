@@ -1,16 +1,17 @@
 <!-- ============================================================
-     Studio Quaglio — Webflow embed (paste in Footer, load last,
-     AFTER the GSAP CDN scripts).
+     Studio Quaglio — Webflow embed.
 
      Staging  (.webflow.io)  → loads script.js       (live working file, always fresh)
      Production (custom domain) → loads script.prod.js (frozen snapshot)
 
-     Loads via plain async injection. script.js is resilient to loading
-     after the window 'load' event, so no document.write is needed.
+     - Waits for GSAP + plugins before injecting script.js (script.js calls
+       gsap.* on its first line), so placement (head or footer) is irrelevant.
+     - Logs a STAGING / PRODUCTION banner via a hidden-iframe console, because
+       the site's head code replaces window.console.* with no-ops. The iframe
+       console is untouched, so the banner always shows.
 
-     NOTE: both modes currently log to the console for verification.
-     Once confirmed, delete the PRODUCTION console.log block to silence
-     production (staging banner can stay).
+     To make production silent later: delete the `else { ... }` PRODUCTION
+     log block (staging banner can stay).
 
      Deploy:
        push-staging                push edits → updates STAGING only
@@ -22,25 +23,56 @@
   // .webflow.io (and Designer preview) = staging; custom domain = production
   var staging = /\.webflow\.io$/.test(location.hostname);
   var file = staging ? 'script.js' : 'script.prod.js';
-  var bust = staging ? '?t=' + Date.now() : '';  // staging always loads fresh
+  // No cache-buster: Vercel serves these with `max-age=0, must-revalidate`, so the
+  // browser already revalidates every load. A `?t=` param triggered ad blockers
+  // (ERR_BLOCKED_BY_CLIENT), so it is intentionally omitted.
+
+  // The site disables window.console.* — borrow a clean console from a hidden iframe.
+  var log = (function () {
+    try {
+      var f = document.createElement('iframe');
+      f.style.display = 'none';
+      (document.body || document.head || document.documentElement).appendChild(f);
+      var con = f.contentWindow.console;            // fresh, un-patched console
+      if (con && typeof con.log === 'function') return con.log.bind(con);
+    } catch (e) {}
+    return (window.console && window.console.log)
+      ? window.console.log.bind(window.console)
+      : function () {};
+  })();
 
   if (staging) {
-    console.log(
-      '%c STAGING %c Studio Quaglio — testing mode (' + file + ')',
+    log('%c STAGING %c Studio Quaglio — testing mode (' + file + ')',
       'background:#e67e22;color:#fff;font-weight:700;padding:2px 6px;border-radius:3px',
-      'color:#e67e22;font-weight:600'
-    );
+      'color:#e67e22;font-weight:600');
   } else {
-    // TEMP diagnostic — delete this block to make production silent
-    console.log(
-      '%c PRODUCTION %c Studio Quaglio — live (' + file + ') on ' + location.hostname,
+    log('%c PRODUCTION %c Studio Quaglio — live (' + file + ') on ' + location.hostname,
       'background:#2ecc71;color:#fff;font-weight:700;padding:2px 6px;border-radius:3px',
-      'color:#2ecc71;font-weight:600'
-    );
+      'color:#2ecc71;font-weight:600');
   }
 
-  var s = document.createElement('script');
-  s.src = BASE + '/' + file + bust;
-  document.head.appendChild(s);
+  function inject() {
+    var s = document.createElement('script');
+    s.src = BASE + '/' + file;
+    document.head.appendChild(s);
+  }
+
+  // script.js needs these globals on its first lines.
+  function ready() {
+    return window.gsap && window.ScrollTrigger && window.Observer && window.CustomEase;
+  }
+
+  if (ready()) {
+    inject();
+  } else {
+    var waited = 0;
+    var iv = setInterval(function () {
+      waited += 50;
+      if (ready() || waited >= 10000) {  // give up after 10s and try anyway
+        clearInterval(iv);
+        inject();
+      }
+    }, 50);
+  }
 })();
 </script>

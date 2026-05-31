@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(node --check projects/studio-quaglio/script.js)",
-      "Bash(./deploy.sh prod *)"
+      "Bash(./deploy.sh prod *)",
+      "Bash(curl -sI \"https://quaglio-scripts.vercel.app/projects/studio-quaglio/script.js\")",
+      "Bash(curl -sI \"https://quaglio-scripts.vercel.app/projects/studio-quaglio/script.prod.js\")"
     ]
   },
   "enabledPlugins": {
