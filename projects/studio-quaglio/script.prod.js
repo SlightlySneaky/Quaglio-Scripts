@@ -123,13 +123,21 @@ function initAllScripts() {
   lazyOnce("SwiperSlider",      '[data-swiper-group="2"]',       initSwiperSlider);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function bootStudioQuaglio() {
   if (typeof Lenis !== "undefined") initLenis();
 
   safeInit("Preloader",          '.preloader',              initPreloader);
   safeInit("NavAnimation",       '[data-theme-nav="true"]', initNavAnimation);
   safeInit("SplitTextAndReveal", '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]', initSplitTextAndReveal);
-});
+}
+
+// Run immediately if the DOM is already parsed (the script may be injected
+// asynchronously, after DOMContentLoaded has already fired).
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootStudioQuaglio);
+} else {
+  bootStudioQuaglio();
+}
 
 
 // ============================================
