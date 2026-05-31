@@ -1007,6 +1007,7 @@ function initFormModal() {
     });
   });
 }
+*/
 
 
 // ============================================
@@ -1150,5 +1151,3 @@ function initMetalShader(el) {
   });
   io.observe(canvas);
 }
-}
-*/

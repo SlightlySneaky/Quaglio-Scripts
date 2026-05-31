@@ -17,7 +17,8 @@
       "Bash(node -e ' *)",
       "Bash(curl -s __TRACKED_VAR__/embed.html?cb=__TRACKED_VAR__)",
       "Bash(chmod +x \"/Users/ethanxrecruiter/Q/Quaglio Scripts/push.sh\")",
-      "WebFetch(domain:metal.jakubantalik.com)"
+      "WebFetch(domain:metal.jakubantalik.com)",
+      "WebFetch(domain:quaglio-scripts.vercel.app)"
     ],
     "additionalDirectories": [
       "/Users/ethanxrecruiter/Q/Quaglio Scripts/projects/studio-quaglio/colorflow/assets"
