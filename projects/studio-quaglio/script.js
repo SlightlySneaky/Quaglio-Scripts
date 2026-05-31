@@ -86,12 +86,79 @@ function initAfterEnterFunctions(next) {
 // PAGE TRANSITIONS
 // -----------------------------------------
 
+function runLoadAnimations(container) {
+  const hasSplitText = typeof window.SplitText !== "undefined";
+  if (hasSplitText) gsap.registerPlugin(SplitText);
+
+  const root = container || document;
+  const loadEls = Array.from(root.querySelectorAll("[data-load]"));
+  if (!loadEls.length) return gsap.timeline();
+
+  // Group elements by their data-load order value
+  const groups = {};
+  loadEls.forEach(el => {
+    const order = parseInt(el.getAttribute("data-load"), 10) || 0;
+    if (!groups[order]) groups[order] = [];
+    groups[order].push(el);
+  });
+
+  const sortedOrders = Object.keys(groups).map(Number).sort((a, b) => a - b);
+
+  // Set initial hidden states immediately so elements aren't visible before animation
+  loadEls.forEach(el => {
+    if (hasSplitText && el.hasAttribute("split-heading")) {
+      const split = new SplitText(el, {
+        type: "chars,words",
+        mask: "chars",
+        maskClass: "char-mask",
+        charsClass: "is-split-char",
+        wordsClass: "is-split-word"
+      });
+      gsap.set(el, { overflow: "hidden", position: "relative", autoAlpha: 1 });
+      gsap.set(split.chars, { yPercent: 120, autoAlpha: 0 });
+      el._loadSplit = split;
+    } else if (el.hasAttribute("reveal-block")) {
+      gsap.set(el, { clipPath: "inset(0 100% 0 0)", willChange: "clip-path" });
+    }
+  });
+
+  const masterTl = gsap.timeline();
+
+  sortedOrders.forEach(order => {
+    const groupTl = gsap.timeline();
+
+    groups[order].forEach(el => {
+      if (hasSplitText && el.hasAttribute("split-heading") && el._loadSplit) {
+        groupTl.to(el._loadSplit.chars, {
+          yPercent: 0,
+          autoAlpha: 1,
+          duration: 0.8,
+          ease: "osmo",
+          stagger: { each: 0.01, from: "start" }
+        }, 0);
+      } else if (el.hasAttribute("reveal-block")) {
+        groupTl.to(el, {
+          clipPath: "inset(0 0% 0 0)",
+          duration: 1,
+          ease: "osmo"
+        }, 0);
+      }
+    });
+
+    masterTl.add(groupTl);
+  });
+
+  return masterTl;
+}
+
 function runPageOnceAnimation(next) {
   const tl = gsap.timeline();
 
   tl.call(() => {
     resetPage(next)
   }, null, 0);
+
+  tl.add(runLoadAnimations(next));
 
   return tl;
 }
@@ -590,10 +657,10 @@ function initSplitTextAndReveal() {
   };
 
   if (hasSplitText) {
-    lazyEach("[split-heading]:not([hero])", setupHeading);
-    lazyEach("[split-body]:not([hero])",    setupBody);
+    lazyEach("[split-heading]:not([hero]):not([data-load])", setupHeading);
+    lazyEach("[split-body]:not([hero]):not([data-load])",    setupBody);
   }
-  lazyEach("[reveal-block]", setupRevealBlock);
+  lazyEach("[reveal-block]:not([data-load])", setupRevealBlock);
 }
 
 
