@@ -5,7 +5,18 @@
       "Bash(./deploy.sh prod *)",
       "Bash(curl -sI \"https://quaglio-scripts.vercel.app/projects/studio-quaglio/script.js\")",
       "Bash(curl -sI \"https://quaglio-scripts.vercel.app/projects/studio-quaglio/script.prod.js\")",
-      "Bash(curl -s https://quaglio-scripts.vercel.app/projects/studio-quaglio/script.prod.js?cb=__TRACKED_VAR__)"
+      "Bash(curl -s https://quaglio-scripts.vercel.app/projects/studio-quaglio/script.prod.js?cb=__TRACKED_VAR__)",
+      "Bash(curl -s \"https://colorflow-embed.b-cdn.net/embed.html\" -o colorflow-embed.html)",
+      "Bash(curl -s \"https://colorflow-embed.b-cdn.net/assets/embed-C058yEY-.js\" -o cf-embed.js)",
+      "Bash(grep -oE \"/data/\\\\\\\\$\\\\{e\\\\}[^;]{0,80}\" cf-embed.js)",
+      "Bash(curl -s -o /tmp/cf-scene -w '%{http_code}' https://colorflow-embed.b-cdn.net/__TRACKED_VAR__)",
+      "Bash(grep -oE '\\(/assets/[a-zA-Z0-9._-]*|import\\\\.meta\\\\.url|new Worker[^\\)]{0,40}|[a-z]+\\\\.wasm|fetch\\\\\\(['\\\\''\"]/[^'\\\\''\"]*|https?://[a-zA-Z0-9./_-]{0,50}\\)' assets/__TRACKED_VAR__)",
+      "Bash(grep -oE \".{0,20}effects.{0,80}\" data/xjYg043N.json)",
+      "Bash(cd \"/Users/ethanxrecruiter/Q/Quaglio Scripts/projects/studio-quaglio/colorflow\" && rm -f assets/*.png && echo \"removed bogus 404 png files\" && echo \"=== remaining assets ===\" && ls -1 assets/)",
+      "Bash(./deploy.sh)"
+    ],
+    "additionalDirectories": [
+      "/Users/ethanxrecruiter/Q/Quaglio Scripts/projects/studio-quaglio/colorflow/assets"
     ]
   },
   "enabledPlugins": {
