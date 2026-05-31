@@ -124,9 +124,9 @@ function initAllScripts() {
   lazyOnce("SwiperSlider",      '[data-swiper-group="2"]',       initSwiperSlider);
 
   // Per-element WebGL — safeInit so hero instances start before scroll.
-  safeInit("MetalShader", '[data-metal]', () =>
-    document.querySelectorAll('[data-metal]').forEach(initMetalShader)
-  );
+  // safeInit("MetalShader", '[data-metal]', () =>
+  //   document.querySelectorAll('[data-metal]').forEach(initMetalShader)
+  // );
 }
 
 function bootStudioQuaglio() {
@@ -1033,11 +1033,13 @@ function initFormModal() {
 
 
 // ============================================
-// METAL SHADER
+// METAL SHADER  (disabled for now — re-enable the safeInit call in
+//                initAllScripts and remove this block comment to restore)
 // Usage: add data-metal (or data-metal="gold" / "bronze" / "silver" / "dark")
 //        to any div in Webflow. The canvas overlays the element; set the div
 //        to position:relative (or leave it — the script handles it).
 // ============================================
+/*
 function initMetalShader(el) {
   // Port of the "Plasma" effect from metal.jakubantalik.com: four sine bands
   // warped by a simplex-noise FBM field, mapped through a 5-stop colour palette.
@@ -1276,3 +1278,4 @@ function initMetalShader(el) {
   });
   io.observe(canvas);
 }
+*/
