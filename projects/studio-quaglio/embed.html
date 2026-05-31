@@ -27,28 +27,26 @@
   // browser already revalidates every load. A `?t=` param triggered ad blockers
   // (ERR_BLOCKED_BY_CLIENT), so it is intentionally omitted.
 
-  // The site disables window.console.* — borrow a clean console from a hidden iframe.
-  var log = (function () {
-    try {
-      var f = document.createElement('iframe');
-      f.style.display = 'none';
-      (document.body || document.head || document.documentElement).appendChild(f);
-      var con = f.contentWindow.console;            // fresh, un-patched console
-      if (con && typeof con.log === 'function') return con.log.bind(con);
-    } catch (e) {}
-    return (window.console && window.console.log)
-      ? window.console.log.bind(window.console)
-      : function () {};
-  })();
-
+  // Staging logs a banner; production stays silent (and does no console work at all).
+  // The site disables window.console.*, so on staging we borrow a clean console
+  // from a hidden iframe.
   if (staging) {
+    var log = (function () {
+      try {
+        var f = document.createElement('iframe');
+        f.style.display = 'none';
+        (document.body || document.head || document.documentElement).appendChild(f);
+        var con = f.contentWindow.console;          // fresh, un-patched console
+        if (con && typeof con.log === 'function') return con.log.bind(con);
+      } catch (e) {}
+      return (window.console && window.console.log)
+        ? window.console.log.bind(window.console)
+        : function () {};
+    })();
+
     log('%c STAGING %c Studio Quaglio — testing mode (' + file + ')',
       'background:#e67e22;color:#fff;font-weight:700;padding:2px 6px;border-radius:3px',
       'color:#e67e22;font-weight:600');
-  } else {
-    log('%c PRODUCTION %c Studio Quaglio — live (' + file + ') on ' + location.hostname,
-      'background:#2ecc71;color:#fff;font-weight:700;padding:2px 6px;border-radius:3px',
-      'color:#2ecc71;font-weight:600');
   }
 
   function inject() {
