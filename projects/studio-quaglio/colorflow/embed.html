@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ColorFlow Embed (self-hosted)</title>
+    <!-- Download the scene in parallel with the JS, and stay transparent until
+         WebGL paints so the host page's instant CSS gradient shows through. -->
+    <link rel="preload" as="fetch" crossorigin href="data/xjYg043N.json" />
+    <style>html,body{margin:0;height:100%;background:transparent;overflow:hidden}</style>
     <script type="module" crossorigin src="assets/embed-C058yEY-.js"></script>
     <link rel="modulepreload" crossorigin href="assets/react-vendor-C3hsl3NC.js">
     <link rel="modulepreload" crossorigin href="assets/three-DnnX4Mxg.js">

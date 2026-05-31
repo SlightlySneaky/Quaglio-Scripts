@@ -13,7 +13,9 @@
       "Bash(grep -oE '\\(/assets/[a-zA-Z0-9._-]*|import\\\\.meta\\\\.url|new Worker[^\\)]{0,40}|[a-z]+\\\\.wasm|fetch\\\\\\(['\\\\''\"]/[^'\\\\''\"]*|https?://[a-zA-Z0-9./_-]{0,50}\\)' assets/__TRACKED_VAR__)",
       "Bash(grep -oE \".{0,20}effects.{0,80}\" data/xjYg043N.json)",
       "Bash(cd \"/Users/ethanxrecruiter/Q/Quaglio Scripts/projects/studio-quaglio/colorflow\" && rm -f assets/*.png && echo \"removed bogus 404 png files\" && echo \"=== remaining assets ===\" && ls -1 assets/)",
-      "Bash(./deploy.sh)"
+      "Bash(./deploy.sh)",
+      "Bash(node -e ' *)",
+      "Bash(curl -s __TRACKED_VAR__/embed.html?cb=__TRACKED_VAR__)"
     ],
     "additionalDirectories": [
       "/Users/ethanxrecruiter/Q/Quaglio Scripts/projects/studio-quaglio/colorflow/assets"
