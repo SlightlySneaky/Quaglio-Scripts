@@ -1195,7 +1195,11 @@ function initMetalShader(el) {
   }
   if (getComputedStyle(el).position === "static") el.style.position = "relative";
   if (isBorder) {
+    // Collapse the element to its content in both axes so the rim hugs the chip
+    // instead of any stretched flex/grid cell it sits in.
     el.style.width = "fit-content";
+    el.style.height = "fit-content";
+    el.style.alignSelf = "flex-start";
     // Match the element's rounded corners so the rim follows a pill / radius.
     const radius = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
     if (radius) canvas.style.borderRadius = (radius + borderPx) + "px";
