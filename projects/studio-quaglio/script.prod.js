@@ -5,12 +5,38 @@
   document.head.appendChild(s);
 })();
 
+
+// -----------------------------------------
+// OSMO PAGE TRANSITION BOILERPLATE
+// -----------------------------------------
+
+gsap.registerPlugin(CustomEase, ScrollTrigger, Observer);
+
+history.scrollRestoration = "manual";
+
+let lenis = null;
+let nextPage = document;
+let onceFunctionsInitialized = false;
+
+const hasLenis = typeof window.Lenis !== "undefined";
+const hasScrollTrigger = typeof window.ScrollTrigger !== "undefined";
+
+const rmMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
+let reducedMotion = rmMQ.matches;
+rmMQ.addEventListener?.("change", e => (reducedMotion = e.matches));
+rmMQ.addListener?.(e => (reducedMotion = e.matches));
+
+const has = (s) => !!nextPage.querySelector(s);
+
+let staggerDefault = 0.05;
+let durationDefault = 0.6;
+
+
 // ============================================
 // EASES
 // Rule: all animations must use one of these named eases.
 // Default: "osmo". Do not use GSAP built-in eases (power, expo, etc.).
 // ============================================
-gsap.registerPlugin(CustomEase);
 CustomEase.create("reveal",    "M0,0 C0.16,1 0.3,1 1,1");
 CustomEase.create("osmo",      "M0,0 C0.625,0.05 0,1 1,1");
 CustomEase.create("energy",    "M0,0 C0.32,0.72 0,1 1,1");
@@ -21,28 +47,73 @@ CustomEase.create("expo.inOut","M0,0 C0.87,0 0.13,1 1,1");
 CustomEase.create("jump",      "M0,0 C0.35,1.5 0.6,1 1,1");
 CustomEase.create("pop",       "M0,0 C0.17,0.67 0.3,1.33 1,1");
 
-// ============================================
-// SHARED
-// ============================================
-function createEase(name) {
-  return typeof CustomEase !== "undefined"
-    ? CustomEase.create(name, "M0,0 C0.625,0.05 0,1 1,1")
-    : "osmo";
-}
+gsap.defaults({ ease: "osmo", duration: durationDefault });
 
-// ============================================
-// LENIS
-// ============================================
-gsap.registerPlugin(ScrollTrigger, Observer);
 ScrollTrigger.config({ ignoreMobileResize: true });
 
-if (document.readyState === 'complete') ScrollTrigger.refresh();
-else window.addEventListener('load', () => ScrollTrigger.refresh(), { once: true });
+if (document.readyState === "complete") ScrollTrigger.refresh();
+else window.addEventListener("load", () => ScrollTrigger.refresh(), { once: true });
 
 
-// ============================================
-// INIT
-// ============================================
+// -----------------------------------------
+// FUNCTION REGISTRY
+// -----------------------------------------
+
+function initOnceFunctions() {
+  initLenis();
+  if (onceFunctionsInitialized) return;
+  onceFunctionsInitialized = true;
+
+  // Runs once on first load — global, page-persistent behaviour.
+  safeInit("Preloader", ".preloader", initPreloader);
+  initTimezoneNav();
+}
+
+function initBeforeEnterFunctions(next) {
+  nextPage = next || document;
+
+  // Runs before the enter animation — nothing page-scoped needed here yet.
+}
+
+function initAfterEnterFunctions(next) {
+  nextPage = next || document;
+
+  // Runs after enter animation completes — (re)build every page-scoped script.
+  initPageScripts();
+
+  if (hasLenis) {
+    lenis.resize();
+  }
+
+  if (hasScrollTrigger) {
+    ScrollTrigger.refresh();
+  }
+}
+
+// All per-page scripts. Runs on first load and after every Barba enter.
+// Safe to query `document`: by the time afterEnter fires, the outgoing
+// container has already been removed, so only the new page is in the DOM.
+function initPageScripts() {
+  // Global, lightweight — safe to run right away.
+  safeInit("NavAnimation",       '[data-theme-nav="true"]',   initNavAnimation);
+  safeInit("AccordionCSS",       '[data-accordion-css-init]', initAccordionCSS);
+  safeInit("HeroParallax",       '[data-hero-parallax]',      initHeroParallax);
+  safeInit("SplitTextAndReveal", '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]', initSplitTextAndReveal);
+  initSvgFillLoop();
+
+  // Per-component — built when that section approaches the viewport.
+  lazyOnce("GlobalParallax",    '[data-parallax="trigger"]',     initGlobalParallax);
+  lazyOnce("TestimonialSlider", '[data-swiper-group="1"]',       initTestimonialSlider);
+  lazyOnce("DraggableMarquee",  '[data-draggable-marquee-init]', initDraggableMarquee);
+  lazyOnce("ButtonCharStagger", '[data-button-animate-chars]',   initButtonCharacterStagger);
+  lazyOnce("SwiperSlider",      '[data-swiper-group="2"]',       initSwiperSlider);
+}
+
+
+// -----------------------------------------
+// INIT HELPERS
+// -----------------------------------------
+
 function safeInit(name, selector, fn) {
   if (selector && !document.querySelector(selector)) return;
   try { fn(); }
@@ -108,53 +179,317 @@ function lazyEach(name, selector, perEl, rootMargin = "600px 0px") {
   els.forEach((el) => io.observe(el));
 }
 
-function initAllScripts() {
-  // Global, lightweight — safe to run right away.
-  safeInit("AccordionCSS",    '[data-accordion-css-init]', initAccordionCSS);
-  safeInit("HeroParallax",    '[data-hero-parallax]',      initHeroParallax);
 
-  // Per-component — built when that section approaches the viewport.
-  lazyOnce("GlobalParallax",    '[data-parallax="trigger"]',     initGlobalParallax);
-  lazyOnce("TestimonialSlider", '[data-swiper-group="1"]',       initTestimonialSlider);
-  // lazyOnce("StickyTitleScroll", '[data-sticky-title="wrap"]',  initStickyTitleScroll);
-  lazyOnce("DraggableMarquee",  '[data-draggable-marquee-init]', initDraggableMarquee);
-  lazyOnce("ButtonCharStagger", '[data-button-animate-chars]',   initButtonCharacterStagger);
-  // lazyOnce("FormModal",         '[form-wrap]',                 initFormModal);
-  lazyOnce("SwiperSlider",      '[data-swiper-group="2"]',       initSwiperSlider);
+// -----------------------------------------
+// PAGE TRANSITIONS
+// -----------------------------------------
 
-  // Per-element WebGL — safeInit so hero instances start before scroll.
-  // safeInit("MetalShader", '[data-metal]', () =>
-  //   document.querySelectorAll('[data-metal]').forEach(initMetalShader)
-  // );
+function runPageOnceAnimation(next) {
+  const tl = gsap.timeline();
+
+  tl.call(() => {
+    resetPage(next)
+  }, null, 0);
+
+  return tl;
 }
 
-function bootStudioQuaglio() {
-  if (typeof Lenis !== "undefined") initLenis();
+function runPageLeaveAnimation(current, next) {
+  const parent = current.parentElement || document.body;
+  const transitionWrap = document.querySelector("[data-transition-wrap]");
+  const transitionDark = transitionWrap.querySelector("[data-transition-dark]");
+  
+  // Helper function to prepare transition structure
+  const { wrapper } = prepareForTransition(parent, current, next);
+  
+  const tl = gsap.timeline({
+    onComplete: () => {
+      wrapper.replaceWith(next);
+      gsap.set(next, {clearProps: "all" });
+    }
+  });
+  
+  if (reducedMotion) {
+    // Immediate swap behavior if user prefers reduced motion
+    return tl.set(current, { autoAlpha: 0 });
+  }
+  
+  tl.set(transitionWrap, {
+    zIndex: 2
+  });
+  
+  tl.fromTo(transitionDark, {
+    autoAlpha: 0
+  },{
+    autoAlpha: 0.5,
+    duration: 0.9,
+  }, 0);  
 
-  safeInit("Preloader",          '.preloader',              initPreloader);
-  safeInit("NavAnimation",       '[data-theme-nav="true"]', initNavAnimation);
-  safeInit("SplitTextAndReveal", '[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]', initSplitTextAndReveal);
+  tl.to(wrapper, {
+    yPercent: 0,
+    duration: 0.75,
+  }, 0);
+
+  tl.to(wrapper, {
+    duration: 0.9,
+    clipPath: "inset(0% round 0em)"
+  }, "<");
+  
+  tl.to(current, {
+    scale: 1.05,
+    duration: 0.9,
+    overwrite: "auto"
+  }, "<");
+  
+  tl.set(transitionDark, {
+    autoAlpha: 0,
+  });
+  
+  return tl;
 }
 
-// Run immediately if the DOM is already parsed (the script may be injected
-// asynchronously, after DOMContentLoaded has already fired).
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", bootStudioQuaglio);
-} else {
-  bootStudioQuaglio();
+function runPageEnterAnimation(next){
+  const tl = gsap.timeline();
+  
+  if (reducedMotion) {
+    // Immediate swap behavior if user prefers reduced motion
+    tl.set(next, { autoAlpha: 1 });
+    tl.add("pageReady")
+    tl.call(resetPage, [next], "pageReady");
+    return new Promise(resolve => tl.call(resolve, null, "pageReady"));
+  }
+
+  tl.add("pageReady");
+  tl.call(resetPage, [next], "pageReady");
+
+  return new Promise(resolve => {
+    tl.call(resolve, null, "pageReady");
+  });
+}
+
+function prepareForTransition(parent, current, next){
+
+  const scrollY = window.scrollY;
+
+  // Freeze current page in place
+  gsap.set(current, {
+    position: "fixed",
+    top: -scrollY,
+    left: 0,
+    width: "100%",
+    overflow: "hidden"
+  });
+
+  // Reset browser scroll so next page starts correctly
+  window.scrollTo(0, 0);
+
+  // Create wrapper
+  const wrapper = document.createElement("div");
+  wrapper.className = "page-transition__wrapper";
+
+  parent.insertBefore(wrapper, next);
+  wrapper.appendChild(next);
+
+  gsap.set(wrapper, {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    width: "100%",
+    height: "100vh",
+    yPercent: 50,
+    overflow: "clip",
+    zIndex: 5,
+    transformStyle: "preserve-3d",
+    willChange: "transform, clip-path",
+    clipPath: "inset(50% round 3em)",
+  });
+
+  return { wrapper };
 }
 
 
-// ============================================
-// LENIS
-// ============================================
+// -----------------------------------------
+// BARBA HOOKS + INIT
+// -----------------------------------------
+
+barba.hooks.beforeEnter(data => {
+  // Position new container on top
+  gsap.set(data.next.container, {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+  });
+
+  if (lenis && typeof lenis.stop === "function") {
+    lenis.stop();
+  }
+
+  initBeforeEnterFunctions(data.next.container);
+  applyThemeFrom(data.next.container);
+});
+
+barba.hooks.afterLeave(() => {
+  if (hasScrollTrigger) {
+    ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+  }
+});
+
+barba.hooks.enter(data => {
+  initBarbaNavUpdate(data);
+});
+
+barba.hooks.afterEnter(data => {
+  // Run page functions
+  initAfterEnterFunctions(data.next.container);
+
+  // Settle
+  if (hasLenis) {
+    lenis.resize();
+    lenis.start();
+  }
+
+  if (hasScrollTrigger) {
+    ScrollTrigger.refresh();
+  }
+});
+
+barba.init({
+  debug: false,
+  timeout: 7000,
+  preventRunning: true,
+  transitions: [
+    {
+      name: "default",
+      sync: true,
+
+      // First load
+      async once(data) {
+        initOnceFunctions();
+
+        return runPageOnceAnimation(data.next.container);
+      },
+
+      // Current page leaves
+      async leave(data) {
+        return runPageLeaveAnimation(data.current.container, data.next.container);
+      },
+
+      // New page enters
+      async enter(data) {
+        return runPageEnterAnimation(data.next.container);
+      }
+    }
+  ],
+});
+
+
+// -----------------------------------------
+// GENERIC + HELPERS
+// -----------------------------------------
+
+const themeConfig = {
+  light: {
+    nav: "dark",
+    transition: "light"
+  },
+  dark: {
+    nav: "light",
+    transition: "dark"
+  }
+};
+
+function applyThemeFrom(container) {
+  const pageTheme = container?.dataset?.pageTheme || "light";
+  const config = themeConfig[pageTheme] || themeConfig.light;
+
+  document.body.dataset.pageTheme = pageTheme;
+  const transitionEl = document.querySelector('[data-theme-transition]');
+  if (transitionEl) {
+    transitionEl.dataset.themeTransition = config.transition;
+  }
+
+  const nav = document.querySelector('[data-theme-nav]');
+  if (nav) {
+    nav.dataset.themeNav = config.nav;
+  }
+}
+
 function initLenis() {
-  const lenis = new Lenis();
-  lenis.on("scroll", ScrollTrigger.update);
-  gsap.ticker.add((time) => { lenis.raf(time * 1000); });
+  if (lenis) return; // already created
+  if (!hasLenis) return;
+
+  lenis = new Lenis({
+    lerp: 0.165,
+    wheelMultiplier: 1.25,
+  });
+
+  if (hasScrollTrigger) {
+    lenis.on("scroll", ScrollTrigger.update);
+  }
+
+  gsap.ticker.add((time) => {
+    lenis.raf(time * 1000);
+  });
+
   gsap.ticker.lagSmoothing(0);
 }
 
+function resetPage(container) {
+  window.scrollTo(0, 0);
+  gsap.set(container, { clearProps: "position,top,left,right" });
+
+  if (hasLenis) {
+    lenis.resize();
+    lenis.start();
+  }
+}
+
+function debounceOnWidthChange(fn, ms) {
+  let last = innerWidth,
+    timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      if (innerWidth !== last) {
+        last = innerWidth;
+        fn.apply(this, args);
+      }
+    }, ms);
+  };
+}
+
+function initBarbaNavUpdate(data) {
+  if (!data || !data.next || !data.next.html) return;
+
+  var tpl = document.createElement('template');
+  tpl.innerHTML = data.next.html.trim();
+  var nextNodes = tpl.content.querySelectorAll('[data-barba-update]');
+  var currentNodes = document.querySelectorAll('nav [data-barba-update]');
+
+  currentNodes.forEach(function (curr, index) {
+    var next = nextNodes[index];
+    if (!next) return;
+
+    // Aria-current sync
+    var newStatus = next.getAttribute('aria-current');
+    if (newStatus !== null) {
+      curr.setAttribute('aria-current', newStatus);
+    } else {
+      curr.removeAttribute('aria-current');
+    }
+
+    // Class list sync
+    var newClassList = next.getAttribute('class') || '';
+    curr.setAttribute('class', newClassList);
+  });
+}
+
+
+// -----------------------------------------
+// PAGE SCRIPTS
+// -----------------------------------------
 
 // ============================================
 // PRELOADER (.preloader)
@@ -180,7 +515,6 @@ function initPreloader() {
       wrap.style.opacity = "0";
       wrap.style.filter  = "blur(24px)";
     });
-    window.setTimeout(initAllScripts, 0);
     window.setTimeout(() => {
       wrap.style.display    = "none";
       wrap.style.willChange = "auto";
@@ -190,6 +524,7 @@ function initPreloader() {
   if (document.readyState === "complete") reveal();
   else window.addEventListener("load", reveal, { once: true });
 }
+
 
 // ============================================
 // NAV ANIMATION
@@ -433,6 +768,7 @@ function initGlobalParallax() {
 }
 
 
+// ============================================
 // HERO PARALLAX ([data-hero-parallax])
 // ============================================
 function initHeroParallax() {
@@ -468,6 +804,7 @@ function initHeroParallax() {
 }
 
 
+// ============================================
 // TESTIMONIAL SLIDER (Swiper + SplitText)
 // ============================================
 function initTestimonialSlider() {
@@ -563,6 +900,7 @@ function initTestimonialSlider() {
 }
 
 
+// ============================================
 // ACCORDION CSS
 // ============================================
 function initAccordionCSS() {
@@ -585,9 +923,10 @@ function initAccordionCSS() {
 }
 
 
-// TIMEZONE NAV
 // ============================================
-(() => {
+// TIMEZONE NAV (.bne-time)
+// ============================================
+function initTimezoneNav() {
   const el = document.querySelector(".bne-time");
   if (!el) return;
   function updateTime() {
@@ -599,12 +938,13 @@ function initAccordionCSS() {
   }
   updateTime();
   setInterval(updateTime, 1000);
-})();
+}
 
 
+// ============================================
 // SVG FILL LOOP
 // ============================================
-(() => {
+function initSvgFillLoop() {
   const COLOR       = "rgb(91, 139, 172)";
   const DURATION_MS = 700;
   const STAGGER_MS  = 80;
@@ -672,24 +1012,15 @@ function initAccordionCSS() {
     }
   }
 
-  function init() {
-    getAnimatedSvgs().forEach(svg => {
-      if (svg.__fillLoopStarted) return;
-      svg.__fillLoopStarted = true;
-      loopSvg(svg);
-    });
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
-
-  new MutationObserver(() => init()).observe(document.body, { childList: true, subtree: false });
-})();
+  getAnimatedSvgs().forEach(svg => {
+    if (svg.__fillLoopStarted) return;
+    svg.__fillLoopStarted = true;
+    loopSvg(svg);
+  });
+}
 
 
+// ============================================
 // DRAGGABLE MARQUEE ([data-draggable-marquee-init])
 // ============================================
 function initDraggableMarquee() {
@@ -778,6 +1109,8 @@ function initDraggableMarquee() {
   });
 }
 
+
+// ============================================
 // BUTTON CHARACTER STAGGER ([data-button-animate-chars])
 // ============================================
 function initButtonCharacterStagger() {
@@ -804,6 +1137,7 @@ function initButtonCharacterStagger() {
 }
 
 
+// ============================================
 // SWIPER SLIDER ([data-swiper-group])
 // Uses swiper-2 / swiper-wrapper-2 / swiper-slide-2 classes
 // to avoid conflicting with the testimonial swiper
@@ -853,407 +1187,3 @@ function initSwiperSlider() {
     });
   });
 }
-
-/*
-// CHART JS 
-// ============================================
-
-(function() {
-  let chartInstance = null;
-  
-  function colourFor(score) {
-    if (score <= 1) return '#C8342B';
-    if (score <= 3) return '#E87A3A';
-    return '#4A9E5C';
-  }
-  
-  function renderResults() {
-    const resultStep = document.querySelector('[sf-step="result"]');
-    if (!resultStep) return;
-    if (window.getComputedStyle(resultStep).display === 'none') return;
-    
-    const getScore = (name) => {
-      const el = document.querySelector('[data-score-holder="' + name + '"]');
-      return el ? parseInt(el.textContent, 10) || 0 : 0;
-    };
-    
-    const scores = {
-      total:      getScore('total'),
-      reputation: getScore('reputation'),
-      buyer:      getScore('buyer'),
-      proof:      getScore('proof'),
-      inbound:    getScore('inbound')
-    };
-    
-    const pct = {
-      total:      Math.round((scores.total / 16) * 100),
-      reputation: Math.round((scores.reputation / 4) * 100),
-      buyer:      Math.round((scores.buyer / 4) * 100),
-      proof:      Math.round((scores.proof / 4) * 100),
-      inbound:    Math.round((scores.inbound / 4) * 100)
-    };
-    
-    const centreEl = resultStep.querySelector('.chart-total-pct');
-    if (centreEl) centreEl.textContent = pct.total + '%';
-    
-    ['reputation', 'buyer', 'proof', 'inbound'].forEach(cat => {
-      const el = resultStep.querySelector('[data-category="' + cat + '"]');
-      if (el) el.textContent = pct[cat] + '%';
-    });
-    
-    const canvas = resultStep.querySelector('.result-donut');
-    if (!canvas || typeof Chart === 'undefined') return;
-    
-    if (chartInstance) chartInstance.destroy();
-    
-    chartInstance = new Chart(canvas, {
-      type: 'doughnut',
-      data: {
-        labels: ['Reputation vs Reality', 'Buyer Recognition', 'Proof & Credibility', 'Inbound Quality'],
-        datasets: [{
-          data: [pct.reputation, pct.buyer, pct.proof, pct.inbound],
-          backgroundColor: [
-            colourFor(scores.reputation),
-            colourFor(scores.buyer),
-            colourFor(scores.proof),
-            colourFor(scores.inbound)
-          ],
-          borderWidth: 2,
-          borderColor: '#ffffff'
-        }]
-      },
-      options: {
-        cutout: '70%',
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: { label: (ctx) => ctx.label + ': ' + ctx.parsed + '%' }
-          }
-        }
-      }
-    });
-  }
-  
-  function startWatching() {
-    const resultStep = document.querySelector('[sf-step="result"]');
-    if (!resultStep) {
-      setTimeout(startWatching, 200);
-      return;
-    }
-    
-    const observer = new MutationObserver(() => {
-      clearTimeout(window._resultRenderTimer);
-      window._resultRenderTimer = setTimeout(renderResults, 300);
-    });
-    
-    observer.observe(resultStep, { attributes: true, attributeFilter: ['style', 'class'] });
-  }
-  
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startWatching);
-  } else {
-    startWatching();
-  }
-})();
-*/
-
-// Form modal ([form-open] / [form-wrap])
-// ============================================
-/*
-function initFormModal() {
-  const openers = document.querySelectorAll("[form-open]");
-  const wrap    = document.querySelector("[form-wrap]");
-  if (!wrap) return;
-
-  const inner   = wrap.querySelector("[form-inner]");
-  const bg      = wrap.querySelector("[form-bg]");
-  const closers = wrap.querySelectorAll("[form-close]");
-  if (!inner) { console.error("❌ Form modal: [form-inner] not found inside [form-wrap]"); return; }
-  if (!bg)    { console.error("❌ Form modal: [form-bg] not found inside [form-wrap]"); return; }
-
-  gsap.set(wrap,  { display: "flex", autoAlpha: 0, pointerEvents: "none" });
-  gsap.set(bg,    { autoAlpha: 0 });
-  gsap.set(inner, { x: "100%" });
-
-  function openForm() {
-    gsap.set(wrap, { autoAlpha: 1, pointerEvents: "auto" });
-    const tl = gsap.timeline();
-    tl.to(bg, { autoAlpha: 1, duration: 0.5, ease: "osmo" }, 0)
-      .to(inner, { x: "0%", duration: 0.65, ease: "osmo" }, "-=0.15");
-  }
-
-  function closeForm() {
-    const tl = gsap.timeline({
-      onComplete: () => gsap.set(wrap, { autoAlpha: 0, pointerEvents: "none" }),
-    });
-    tl.to(inner, { x: "100%", duration: 0.5, ease: "energy" }, 0)
-      .to(bg, { autoAlpha: 0, duration: 0.4, ease: "energy" }, 0.1);
-  }
-
-  openers.forEach((el) => el.addEventListener("click", openForm));
-  closers.forEach((el) => el.addEventListener("click", closeForm));
-  bg.addEventListener("click", closeForm);
-
-  wrap.querySelectorAll('input[type="radio"]').forEach((radio) => {
-    radio.addEventListener("change", () => {
-      wrap
-        .querySelectorAll(`input[type="radio"][name="${radio.name}"]`)
-        .forEach((r) => {
-          const text = r.closest("label")?.querySelector(".w-form-label");
-          if (text) text.style.color = "";
-        });
-      const text = radio.closest("label")?.querySelector(".w-form-label");
-      if (text) text.style.color = "white";
-    });
-  });
-}
-*/
-
-/*
-// ============================================
-// METAL SHADER  (disabled for now — re-enable the safeInit call in
-//                initAllScripts and remove this block comment to restore)
-// Usage: add data-metal (or data-metal="gold" / "bronze" / "silver" / "dark")
-//        to any div in Webflow. The canvas overlays the element; set the div
-//        to position:relative (or leave it — the script handles it).
-// ============================================
-/*
-function initMetalShader(el) {
-  // Port of the "Plasma" effect from metal.jakubantalik.com: four sine bands
-  // warped by a simplex-noise FBM field, mapped through a 5-stop colour palette.
-  const VERT = `
-    attribute vec2 a_position;
-    void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
-  `;
-
-  const FRAG = `
-    precision highp float;
-    uniform vec2  u_resolution;
-    uniform float u_time;
-    uniform vec3  u_color1, u_color2, u_color3, u_color4, u_color5;
-    uniform float u_intensity, u_scale, u_direction, u_distortion, u_complexity;
-    uniform float u_vignette, u_vigOpacity, u_blur, u_shaderOpacity;
-
-    vec3 mod289(vec3 x)   { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-    vec2 mod289v2(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-    vec3 permute(vec3 x)  { return mod289((x * 34.0 + 1.0) * x); }
-
-    float snoise(vec2 v) {
-      const vec4 C = vec4(0.211324865405187, 0.366025403784439,
-                          -0.577350269189626, 0.024390243902439);
-      vec2 i  = floor(v + dot(v, C.yy));
-      vec2 x0 = v - i + dot(i, C.xx);
-      vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-      vec4 x12 = x0.xyxy + C.xxzz; x12.xy -= i1;
-      i = mod289v2(i);
-      vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
-      vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
-      m = m * m; m = m * m;
-      vec3 x_ = 2.0 * fract(p * C.www) - 1.0;
-      vec3 h = abs(x_) - 0.5;
-      vec3 ox = floor(x_ + 0.5);
-      vec3 a0 = x_ - ox;
-      m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
-      vec3 g;
-      g.x  = a0.x * x0.x + h.x * x0.y;
-      g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-      return 130.0 * dot(m, g);
-    }
-
-    float fbm(vec2 p, float oct) {
-      float val = 0.0, amp = 0.5;
-      int n = int(oct);
-      for (int i = 0; i < 7; i++) {
-        if (i >= n) break;
-        val += amp * snoise(p);
-        p *= 2.0; amp *= 0.5;
-      }
-      return val;
-    }
-
-    float nfbm(vec2 p) { return fbm(p, 3.0 + u_complexity * 4.0); }
-
-    vec3 palette(float t) {
-      t = clamp(t, 0.0, 1.0);
-      t = t * t * (3.0 - 2.0 * t);
-      float k = 64.0;
-      float w1 = exp(-k * t * t);
-      float w2 = exp(-k * (t - 0.25) * (t - 0.25));
-      float w3 = exp(-k * (t - 0.5)  * (t - 0.5));
-      float w4 = exp(-k * (t - 0.75) * (t - 0.75));
-      float w5 = exp(-k * (t - 1.0)  * (t - 1.0));
-      float total = w1 + w2 + w3 + w4 + w5 + 0.0001;
-      return (u_color1 * w1 + u_color2 * w2 + u_color3 * w3 +
-              u_color4 * w4 + u_color5 * w5) / total;
-    }
-
-    vec2 warp(vec2 p, float t) {
-      float str = u_distortion * 2.0;
-      return vec2(
-        nfbm(p + vec2(t * 0.1, 0.0)),
-        nfbm(p + vec2(0.0, t * 0.12) + 5.0)
-      ) * str;
-    }
-
-    vec3 computeEffect(vec2 uv, float aspect, float t) {
-      vec2 p = (uv - 0.5) * u_scale;
-      p.x *= aspect;
-      p += vec2(cos(u_direction), sin(u_direction)) * t * 0.15;
-      float freq = 3.0 + u_complexity * 8.0;
-      float val = 0.0;
-      val += sin(p.x * freq + t);
-      val += sin(p.y * freq + t * 1.3);
-      val += sin((p.x + p.y) * freq * 0.7 + t * 0.7);
-      val += sin(length(p) * freq * 0.8 - t * 1.5);
-      vec2 w = warp(p, t);
-      val += (w.x + w.y) * u_distortion;
-      val = val * 0.2 * u_intensity + 0.5;
-      return palette(clamp(val, 0.0, 1.0));
-    }
-
-    void main() {
-      vec2 uv = gl_FragCoord.xy / u_resolution;
-      float aspect = u_resolution.x / u_resolution.y;
-      float t = u_time;
-
-      vec3 col;
-      if (u_blur < 0.01) {
-        col = computeEffect(uv, aspect, t);
-      } else {
-        float r = u_blur * 0.02;
-        col  = computeEffect(uv,                 aspect, t) * 0.4;
-        col += computeEffect(uv + vec2( r, 0.0), aspect, t) * 0.15;
-        col += computeEffect(uv + vec2(-r, 0.0), aspect, t) * 0.15;
-        col += computeEffect(uv + vec2(0.0,  r), aspect, t) * 0.15;
-        col += computeEffect(uv + vec2(0.0, -r), aspect, t) * 0.15;
-      }
-
-      col = pow(col, vec3(1.3));
-
-      float edgeDist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-      float vigPx = 40.0 / min(u_resolution.x, u_resolution.y);
-      float vigRange = vigPx * (1.0 + u_vignette * 3.0);
-      float vig = edgeDist * edgeDist / (vigRange * vigRange);
-      vig = smoothstep(0.0, 1.0, vig);
-      col *= mix(1.0, vig, u_vignette * u_vigOpacity);
-
-      gl_FragColor = vec4(col, u_shaderOpacity);
-    }
-  `;
-
-  function hexToRgb(h) {
-    const n = parseInt(h.slice(1), 16);
-    return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255];
-  }
-
-  // Faithful preset values pulled from the reference site (dark mode).
-  const PRESETS = {
-    chromatic: { colors: ["#000000","#aae8ff","#c5fe9e","#f7888d","#0d0d0d"], intensity: 2, scale: 1.6, direction: 80, distortion: 0.3, complexity: 0.68, vignette: 0.26, vigOpacity: 0.6, blur: 1, shaderOpacity: 1,    speed: 1.2 },
-    silver:    { colors: ["#000000","#dedede","#747270","#e5e5e5","#0d0d0d"], intensity: 2, scale: 2.5, direction: 80, distortion: 0.3, complexity: 0.68, vignette: 0.26, vigOpacity: 0.6, blur: 1, shaderOpacity: 0.88, speed: 1.2 },
-    gold:      { colors: ["#000000","#ffffff","#ffffff","#f7d488","#0d0d0d"], intensity: 2, scale: 2.5, direction: 80, distortion: 0.3, complexity: 0.68, vignette: 0.26, vigOpacity: 0.6, blur: 1, shaderOpacity: 0.92, speed: 1   },
-  };
-  PRESETS.chrome = PRESETS.silver; // alias
-
-  const preset   = PRESETS[el.dataset.metal] || PRESETS.chromatic;
-  const borderPx = parseInt(el.getAttribute("data-metal-border") || "0") || 0;
-  const isBorder = borderPx > 0;
-
-  const canvas = document.createElement("canvas");
-  if (isBorder) {
-    // Metal fills a rectangle borderPx larger than the element on every side,
-    // then a centered hole the exact size of the element is masked out, so only
-    // a borderPx-wide metallic rim around the outside edge remains visible. No
-    // backing element or background colour needed — the centre stays transparent.
-    const hole = `linear-gradient(#000 0 0) center / calc(100% - ${borderPx * 2}px) calc(100% - ${borderPx * 2}px) no-repeat`;
-    const full = `linear-gradient(#000 0 0) 0 0 / 100% 100% no-repeat`;
-    canvas.style.cssText =
-      `position:absolute;inset:-${borderPx}px;pointer-events:none;z-index:-1;` +
-      `-webkit-mask:${full},${hole};-webkit-mask-composite:xor;` +
-      `mask:${full},${hole};mask-composite:exclude;`;
-  } else {
-    canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;";
-  }
-  if (getComputedStyle(el).position === "static") el.style.position = "relative";
-  if (isBorder) {
-    // Collapse the element to its content in both axes so the rim hugs the chip
-    // instead of any stretched flex/grid cell it sits in.
-    el.style.width = "fit-content";
-    el.style.height = "fit-content";
-    el.style.alignSelf = "flex-start";
-    // Match the element's rounded corners so the rim follows a pill / radius.
-    const radius = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
-    if (radius) canvas.style.borderRadius = (radius + borderPx) + "px";
-  }
-  el.prepend(canvas);
-
-  const gl = canvas.getContext("webgl", { premultipliedAlpha: false, alpha: true });
-  if (!gl) return;
-
-  function compile(type, src) {
-    const s = gl.createShader(type);
-    gl.shaderSource(s, src);
-    gl.compileShader(s);
-    return s;
-  }
-
-  const prog = gl.createProgram();
-  gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
-  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
-  gl.linkProgram(prog);
-  gl.useProgram(prog);
-
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-  const buf = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
-  const posLoc = gl.getAttribLocation(prog, "a_position");
-  gl.enableVertexAttribArray(posLoc);
-  gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-
-  const u    = (name) => gl.getUniformLocation(prog, name);
-  const uTime = u("u_time");
-  const uRes  = u("u_resolution");
-
-  gl.uniform3fv(u("u_color1"), hexToRgb(preset.colors[0]));
-  gl.uniform3fv(u("u_color2"), hexToRgb(preset.colors[1]));
-  gl.uniform3fv(u("u_color3"), hexToRgb(preset.colors[2]));
-  gl.uniform3fv(u("u_color4"), hexToRgb(preset.colors[3]));
-  gl.uniform3fv(u("u_color5"), hexToRgb(preset.colors[4]));
-  gl.uniform1f(u("u_intensity"),     preset.intensity);
-  gl.uniform1f(u("u_scale"),         preset.scale);
-  gl.uniform1f(u("u_direction"),     preset.direction * Math.PI / 180);
-  gl.uniform1f(u("u_distortion"),    preset.distortion);
-  gl.uniform1f(u("u_complexity"),    preset.complexity);
-  gl.uniform1f(u("u_vignette"),      preset.vignette);
-  gl.uniform1f(u("u_vigOpacity"),    preset.vigOpacity);
-  gl.uniform1f(u("u_blur"),          preset.blur);
-  gl.uniform1f(u("u_shaderOpacity"), preset.shaderOpacity);
-
-  const dpr = Math.min(devicePixelRatio, 2);
-  const ro = new ResizeObserver(() => {
-    canvas.width  = (el.offsetWidth  + borderPx * 2) * dpr;
-    canvas.height = (el.offsetHeight + borderPx * 2) * dpr;
-    gl.viewport(0, 0, canvas.width, canvas.height);
-  });
-  ro.observe(el);
-
-  const t0 = performance.now();
-  let raf = null;
-
-  function tick() {
-    gl.uniform1f(uTime, (performance.now() - t0) / 1000 * preset.speed);
-    gl.uniform2f(uRes, canvas.width, canvas.height);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    raf = requestAnimationFrame(tick);
-  }
-
-  // Pause RAF when the canvas scrolls out of view.
-  const io = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) { if (!raf) tick(); }
-    else { cancelAnimationFrame(raf); raf = null; }
-  });
-  io.observe(canvas);
-}
-*/

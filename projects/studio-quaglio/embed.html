@@ -55,9 +55,11 @@
     document.head.appendChild(s);
   }
 
-  // script.js needs these globals on its first lines.
+  // script.js needs these globals on its first lines (it registers GSAP
+  // plugins and calls barba.init immediately).
   function ready() {
-    return window.gsap && window.ScrollTrigger && window.Observer && window.CustomEase;
+    return window.gsap && window.ScrollTrigger && window.Observer
+      && window.CustomEase && window.barba;
   }
 
   if (ready()) {
