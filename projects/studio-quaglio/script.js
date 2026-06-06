@@ -51,6 +51,17 @@ initWelcomingWordsLoader();
 
 
 // -----------------------------------------
+// MOBILE: SKIP SPLITTEXT
+// -----------------------------------------
+// On phones, splitting headings/body into chars/words/lines is the slowest part
+// of first paint and the per-character motion is barely visible on a small
+// screen. Below this breakpoint every text block animates in as ONE piece
+// (autoAlpha + a small rise) instead of being split. Adjust the width to taste.
+const NO_SPLIT_MQ = window.matchMedia("(max-width: 767px)");
+function splitTextEnabled() { return !NO_SPLIT_MQ.matches; }
+
+
+// -----------------------------------------
 // FUNCTION REGISTRY
 // -----------------------------------------
 
@@ -76,6 +87,12 @@ function initBeforeEnterFunctions(next) {
 
 function initAfterEnterFunctions(next) {
   nextPage = next || document;
+
+  // Idempotent per container: Barba runs `once` (not `afterEnter`) on first
+  // load and `afterEnter` (not `once`) on every later navigation, so we call
+  // this from BOTH — the flag stops it ever running twice for the same page.
+  if (nextPage.__sqInit) return;
+  nextPage.__sqInit = true;
 
   // Runs after enter animation completes
   // if (has('[data-something]')) initSomething();
@@ -132,7 +149,7 @@ function runLoadAnimations(container) {
 
   // Set initial hidden states immediately so elements aren't visible before animation
   loadEls.forEach(el => {
-    if (hasSplitText && el.hasAttribute("split-heading")) {
+    if (hasSplitText && splitTextEnabled() && el.hasAttribute("split-heading")) {
       const split = new SplitText(el, {
         type: "chars,words",
         mask: "chars",
@@ -143,6 +160,9 @@ function runLoadAnimations(container) {
       gsap.set(el, { overflow: "hidden", position: "relative", autoAlpha: 1 });
       gsap.set(split.chars, { yPercent: 120, autoAlpha: 0 });
       el._loadSplit = split;
+    } else if (el.hasAttribute("split-heading")) {
+      // Mobile / no SplitText: reveal the whole heading as one piece.
+      gsap.set(el, { autoAlpha: 0, yPercent: 20 });
     } else if (el.hasAttribute("reveal-block")) {
       gsap.set(el, { clipPath: "inset(0 100% 0 0)", willChange: "clip-path" });
     }
@@ -154,13 +174,21 @@ function runLoadAnimations(container) {
     const groupTl = gsap.timeline();
 
     groups[order].forEach(el => {
-      if (hasSplitText && el.hasAttribute("split-heading") && el._loadSplit) {
+      if (el._loadSplit) {
         groupTl.to(el._loadSplit.chars, {
           yPercent: 0,
           autoAlpha: 1,
           duration: 0.8,
           ease: "osmo",
           stagger: { each: 0.01, from: "start" }
+        }, 0);
+      } else if (el.hasAttribute("split-heading")) {
+        // Mobile / no SplitText: animate the whole heading in.
+        groupTl.to(el, {
+          autoAlpha: 1,
+          yPercent: 0,
+          duration: 0.8,
+          ease: "osmo"
         }, 0);
       } else if (el.hasAttribute("reveal-block")) {
         groupTl.to(el, {
@@ -388,9 +416,12 @@ barba.init({
       name: "default",
       sync: true,
       
-      // First load
+      // First load. Barba does NOT fire afterEnter here, so wire up every page
+      // script now — this is what runs behind the welcoming-words overlay and
+      // what resolves `pageReady`, so the loader lifts the instant it's done.
       async once(data) {
         initOnceFunctions();
+        initAfterEnterFunctions(data.next.container);
 
         return runPageOnceAnimation(data.next.container);
       },
@@ -518,11 +549,11 @@ function initBarbaNavUpdate(data) {
 // ============================================
 // WELCOMING WORDS LOADER ([data-loading-container])
 // ============================================
-// Runs first, on top of everything. The intro + word cycle play while the rest
-// of the page boots behind the overlay (Barba once + initAfterEnterFunctions +
-// ScrollTrigger.refresh). The overlay only clears once BOTH the words have all
-// shown AND `pageReady` resolves, so by the time it lifts every script is
-// already wired up and measured — nothing initialises mid-scroll.
+// Runs first, on top of everything. The overlay stays up for exactly as long
+// as the page takes to wire itself up: a quick intro reveal, then the words
+// cycle (looping if needed) WHILE the scripts boot behind it, and the instant
+// `pageReady` resolves the outro plays. No fixed minimum padding — the loader's
+// length is the page's real setup time, so it's never longer than it must be.
 async function initWelcomingWordsLoader() {
   const loadingContainer = document.querySelector('[data-loading-container]');
   if (!loadingContainer) { markPageReady(); return; } // no loader on this page
@@ -537,6 +568,9 @@ async function initWelcomingWordsLoader() {
   // Keep the page frozen under the overlay while it boots.
   if (hasLenis && lenis) lenis.stop();
 
+  let ready = false;
+  pageReady.then(() => { ready = true; });
+
   // Reduced motion: skip the choreography, just hold until the page is ready.
   if (reducedMotion) {
     wordsTarget.textContent = words[words.length - 1] || wordsTarget.textContent;
@@ -546,22 +580,24 @@ async function initWelcomingWordsLoader() {
     return;
   }
 
-  // Intro + cycle the words. (GSAP 3 timelines are awaitable.)
-  const intro = gsap.timeline();
-  intro.set(loadingWords, { yPercent: 50, opacity: 0 });
-  intro.to(loadingWords, { opacity: 1, yPercent: 0, duration: 1, ease: "Expo.easeInOut" });
-  words.forEach((word) => {
-    intro.call(() => { wordsTarget.textContent = word; }, null, '+=0.15');
-  });
-  await intro;
+  // Quick intro reveal. (GSAP 3 tweens/timelines are awaitable.)
+  await gsap.timeline()
+    .set(loadingWords, { yPercent: 50, opacity: 0 })
+    .to(loadingWords, { opacity: 1, yPercent: 0, duration: 0.6, ease: "Expo.easeInOut" });
 
-  // Hold the overlay until the page has finished wiring itself up behind it.
-  await pageReady;
+  // Cycle the words while the page boots — but bail the instant it's ready, so
+  // the overlay never outlasts the actual setup work.
+  let i = 0;
+  while (!ready) {
+    if (words.length) wordsTarget.textContent = words[i++ % words.length];
+    await Promise.race([gsap.delayedCall(0.18, () => {}), pageReady]);
+  }
 
-  const outro = gsap.timeline();
-  outro.to(loadingWords, { opacity: 0, yPercent: -75, duration: 0.8, ease: "Expo.easeIn" });
-  outro.to(loadingContainer, { autoAlpha: 0, duration: 0.6, ease: "Power1.easeInOut" }, "-=0.2");
-  await outro;
+  // Page is wired up and measured — lift the overlay.
+  if (hasLenis && lenis) lenis.stop();
+  await gsap.timeline()
+    .to(loadingWords, { opacity: 0, yPercent: -75, duration: 0.6, ease: "Expo.easeIn" })
+    .to(loadingContainer, { autoAlpha: 0, duration: 0.5, ease: "Power1.easeInOut" }, "-=0.2");
 
   loadingContainer.style.display = "none";
   if (hasLenis && lenis) lenis.start();
@@ -631,7 +667,26 @@ function initSplitTextAndReveal() {
   const hasSplitText = typeof window.SplitText !== "undefined";
   if (hasSplitText) gsap.registerPlugin(SplitText);
 
+  // Mobile / no-SplitText: reveal the whole element as one piece instead of
+  // splitting it into chars/words/lines.
+  function setupWhole(el, start) {
+    const delayAttr  = parseFloat(el.getAttribute("data-split-delay")) || 0;
+    const isLoadAnim = el.getAttribute("data-split-load") === "true";
+
+    gsap.set(el, { autoAlpha: 0, yPercent: 20 });
+
+    const tl = gsap.timeline(
+      isLoadAnim
+        ? {}
+        : { scrollTrigger: { trigger: el, start, toggleActions: "play none none none" } }
+    );
+
+    tl.to(el, { autoAlpha: 1, yPercent: 0, duration: 0.8, ease: "osmo", delay: delayAttr });
+  }
+
   function setupHeading(heading) {
+    if (!hasSplitText || !splitTextEnabled()) { setupWhole(heading, "clamp(top 80%)"); return; }
+
     const delayAttr  = parseFloat(heading.getAttribute("data-split-delay")) || 0;
     const isLoadAnim = heading.getAttribute("data-split-load") === "true";
 
@@ -669,6 +724,8 @@ function initSplitTextAndReveal() {
   }
 
   function setupBody(body) {
+    if (!hasSplitText || !splitTextEnabled()) { setupWhole(body, "clamp(top 85%)"); return; }
+
     const delayAttr  = parseFloat(body.getAttribute("data-split-delay")) || 0.1;
     const isLoadAnim = body.getAttribute("data-split-load") === "true";
 
@@ -764,10 +821,10 @@ function initSplitTextAndReveal() {
     els.forEach((el) => io.observe(el));
   };
 
-  if (hasSplitText) {
-    lazyEach("[split-heading]:not([hero]):not([data-load])", setupHeading);
-    lazyEach("[split-body]:not([hero]):not([data-load])",    setupBody);
-  }
+  // setupHeading/setupBody handle both the split and whole-element (mobile /
+  // no-SplitText) paths themselves, so always observe them.
+  lazyEach("[split-heading]:not([hero]):not([data-load])", setupHeading);
+  lazyEach("[split-body]:not([hero]):not([data-load])",    setupBody);
   lazyEach("[reveal-block]:not([data-load])", setupRevealBlock);
 }
 
@@ -874,22 +931,37 @@ function initTestimonialSlider() {
       const nameEl    = slide.querySelector('[data-split="name"]');
       const roleEl    = slide.querySelector('[data-split="role"]');
       const profileEl = slide.querySelector(".test_profile_wrap");
-      const splits    = { profileEl };
+      // Keep raw element refs so the animations can fall back to whole-element
+      // (mobile / no-SplitText) without splitting.
+      const splits    = { profileEl, quoteEl, nameEl, roleEl };
+      const doSplit   = (typeof SplitText !== "undefined") && splitTextEnabled();
 
       if (quoteEl) {
-        splits.quote = new SplitText(quoteEl, { type: "lines,words", mask: "lines", maskClass: "line-mask" });
         gsap.set(quoteEl, { opacity: 1 });
-        gsap.set(splits.quote.words, { opacity: 0, y: 30 });
+        if (doSplit) {
+          splits.quote = new SplitText(quoteEl, { type: "lines,words", mask: "lines", maskClass: "line-mask" });
+          gsap.set(splits.quote.words, { opacity: 0, y: 30 });
+        } else {
+          gsap.set(quoteEl, { opacity: 0, y: 30 });
+        }
       }
       if (nameEl) {
-        splits.name = new SplitText(nameEl, { type: "chars", mask: "chars", maskClass: "char-mask" });
         gsap.set(nameEl, { opacity: 1 });
-        gsap.set(splits.name.chars, { opacity: 0, y: 10 });
+        if (doSplit) {
+          splits.name = new SplitText(nameEl, { type: "chars", mask: "chars", maskClass: "char-mask" });
+          gsap.set(splits.name.chars, { opacity: 0, y: 10 });
+        } else {
+          gsap.set(nameEl, { opacity: 0, y: 10 });
+        }
       }
       if (roleEl) {
-        splits.role = new SplitText(roleEl, { type: "words", mask: "words", maskClass: "word-mask" });
         gsap.set(roleEl, { opacity: 1 });
-        gsap.set(splits.role.words, { opacity: 0, y: 10 });
+        if (doSplit) {
+          splits.role = new SplitText(roleEl, { type: "words", mask: "words", maskClass: "word-mask" });
+          gsap.set(splits.role.words, { opacity: 0, y: 10 });
+        } else {
+          gsap.set(roleEl, { opacity: 0, y: 10 });
+        }
       }
       if (profileEl) gsap.set(profileEl, { opacity: 0, y: 20, scale: 0.95 });
 
@@ -900,24 +972,31 @@ function initTestimonialSlider() {
   function animateIn(slide) {
     const splits = splitCache.get(slide);
     if (!splits) return;
-    const targets = [splits.profileEl, splits.quote?.words, splits.name?.chars, splits.role?.words].filter(Boolean);
+    // Split targets when available, else the whole element (mobile / no-split).
+    const quoteT = splits.quote ? splits.quote.words : splits.quoteEl;
+    const nameT  = splits.name  ? splits.name.chars  : splits.nameEl;
+    const roleT  = splits.role  ? splits.role.words  : splits.roleEl;
+    const targets = [splits.profileEl, quoteT, nameT, roleT].filter(Boolean);
     gsap.killTweensOf(targets);
     const tl = gsap.timeline({ defaults: { duration: 0.6, ease: "osmo" } });
     if (splits.profileEl) tl.fromTo(splits.profileEl, { opacity: 0, y: 20, scale: 0.95 }, { opacity: 1, y: 0, scale: 1 }, 0);
-    if (splits.quote)     tl.fromTo(splits.quote.words,  { opacity: 0, y: 30 }, { opacity: 1, y: 0, stagger: 0.02 }, 0.05);
-    if (splits.name)      tl.fromTo(splits.name.chars,   { opacity: 0, y: 10 }, { opacity: 1, y: 0, stagger: 0.01 }, "-=0.3");
-    if (splits.role)      tl.fromTo(splits.role.words,   { opacity: 0, y: 10 }, { opacity: 1, y: 0, stagger: 0.03 }, "-=0.3");
+    if (quoteT) tl.fromTo(quoteT, { opacity: 0, y: 30 }, { opacity: 1, y: 0, stagger: 0.02 }, 0.05);
+    if (nameT)  tl.fromTo(nameT,  { opacity: 0, y: 10 }, { opacity: 1, y: 0, stagger: 0.01 }, "-=0.3");
+    if (roleT)  tl.fromTo(roleT,  { opacity: 0, y: 10 }, { opacity: 1, y: 0, stagger: 0.03 }, "-=0.3");
   }
 
   function animateOut(slide) {
     const splits = splitCache.get(slide);
     if (!splits) return;
-    const targets = [splits.profileEl, splits.quote?.words, splits.name?.chars, splits.role?.words].filter(Boolean);
+    const quoteT = splits.quote ? splits.quote.words : splits.quoteEl;
+    const nameT  = splits.name  ? splits.name.chars  : splits.nameEl;
+    const roleT  = splits.role  ? splits.role.words  : splits.roleEl;
+    const targets = [splits.profileEl, quoteT, nameT, roleT].filter(Boolean);
     gsap.killTweensOf(targets);
     const tl = gsap.timeline({ defaults: { duration: 0.5, ease: "energy" } });
-    if (splits.role)      tl.to(splits.role.words,  { opacity: 0, y: 10, stagger: { each: 0.03, from: "end" } }, 0);
-    if (splits.name)      tl.to(splits.name.chars,   { opacity: 0, y: 10, stagger: { each: 0.01, from: "end" } }, 0.05);
-    if (splits.quote)     tl.to(splits.quote.words,  { opacity: 0, y: 30, stagger: { each: 0.02, from: "end" } }, 0.1);
+    if (roleT)  tl.to(roleT,  { opacity: 0, y: 10, stagger: { each: 0.03, from: "end" } }, 0);
+    if (nameT)  tl.to(nameT,   { opacity: 0, y: 10, stagger: { each: 0.01, from: "end" } }, 0.05);
+    if (quoteT) tl.to(quoteT,  { opacity: 0, y: 30, stagger: { each: 0.02, from: "end" } }, 0.1);
     if (splits.profileEl) tl.to(splits.profileEl,    { opacity: 0, y: 20, scale: 0.95 }, "-=0.2");
   }
 
