@@ -45,14 +45,21 @@ function initExample() {
   // ...
 }
 
-// NAV THEME — add u-theme-light to .nav-wrap past 10% of viewport scroll, remove back at top //
+// NAV THEME — swap .nav-wrap to the opposite theme past 10% scroll, restore at top //
 function initNavTheme() {
   const nav = document.querySelector('.nav-wrap');
+
+  // Whatever theme the nav starts in, the scrolled state is the other one.
+  const startTheme  = nav.classList.contains('u-theme-light') ? 'u-theme-light' : 'u-theme-dark';
+  const scrollTheme = startTheme === 'u-theme-light' ? 'u-theme-dark' : 'u-theme-light';
 
   ScrollTrigger.create({
     start: () => window.innerHeight * 0.1, // 10% of the viewport scrolled
     end: 'max',
-    onToggle: (self) => nav.classList.toggle('.u-theme-light', self.isActive)
+    onToggle: (self) => {
+      nav.classList.toggle(startTheme, !self.isActive);
+      nav.classList.toggle(scrollTheme, self.isActive);
+    }
   });
 }
 
