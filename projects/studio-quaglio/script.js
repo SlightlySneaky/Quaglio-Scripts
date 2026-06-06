@@ -29,25 +29,13 @@ gsap.defaults({ ease: "osmo", duration: durationDefault });
 
 
 // -----------------------------------------
-// WELCOMING WORDS LOADER — boot gate
+// SCROLLTRIGGER SETTLE
 // -----------------------------------------
-// `pageReady` resolves once every page script has been wired up and
-// ScrollTrigger has been refreshed (see the end of initAfterEnterFunctions).
-// The welcoming-words overlay keeps itself on top until this resolves, so the
-// whole page boots behind the loader and nothing has to initialise while the
-// user scrolls.
-let _markPageReady = null;
-const pageReady = new Promise((resolve) => { _markPageReady = resolve; });
-function markPageReady() {
-  if (_markPageReady) { _markPageReady(); _markPageReady = null; }
-}
-
-// Safety net: never let the overlay hang if something in the boot chain throws.
-window.addEventListener("load", () => setTimeout(markPageReady, 2000), { once: true });
-
-// Start the loader before anything else — it shows the overlay immediately and
-// only lifts it once both the words have cycled AND the page reports ready.
-initWelcomingWordsLoader();
+// Re-measure all ScrollTriggers once the page is fully loaded — fonts/images can
+// reflow section heights after first paint, and the nav-theme / parallax /
+// reveal triggers are first measured early during boot. Without this the nav
+// theme can flip at the wrong scroll positions. (See settleScrollTriggers.)
+window.addEventListener("load", () => settleScrollTriggers(), { once: true });
 
 
 // -----------------------------------------
@@ -118,10 +106,6 @@ function initAfterEnterFunctions(next) {
   if (hasScrollTrigger) {
     ScrollTrigger.refresh();
   }
-
-  // Everything for this page is now wired up and positions are measured.
-  // Tell the welcoming-words loader it's safe to lift the overlay.
-  markPageReady();
 }
 
 
@@ -417,8 +401,8 @@ barba.init({
       sync: true,
       
       // First load. Barba does NOT fire afterEnter here, so wire up every page
-      // script now — this is what runs behind the welcoming-words overlay and
-      // what resolves `pageReady`, so the loader lifts the instant it's done.
+      // script now (afterEnter only runs on later navigations) — otherwise none
+      // of the per-section scripts initialise on the landing page.
       async once(data) {
         initOnceFunctions();
         initAfterEnterFunctions(data.next.container);
@@ -545,69 +529,51 @@ function initBarbaNavUpdate(data) {
 // YOUR FUNCTIONS GO BELOW HERE
 // -----------------------------------------
 
-
-// ============================================
-// WELCOMING WORDS LOADER ([data-loading-container])
-// ============================================
-// Runs first, on top of everything. The loader always plays its FULL designed
-// animation — intro reveal, then every word in turn, then the outro. Page setup
-// happens concurrently behind the overlay; `pageReady` only gates the outro, so
-// we never reveal the page before it's wired up. Because the Barba lifecycle
-// fix makes setup resolve quickly, `pageReady` is virtually always ready before
-// the words finish, so this adds no extra wait — the animation just completes.
-async function initWelcomingWordsLoader() {
+function initWelcomingWordsLoader() {
   const loadingContainer = document.querySelector('[data-loading-container]');
-  if (!loadingContainer) { markPageReady(); return; } // no loader on this page
+  if (!loadingContainer) return; // Stop animation when no [data-loading-words] is found
 
   const loadingWords = loadingContainer.querySelector('[data-loading-words]');
-  const wordsTarget  = loadingWords && loadingWords.querySelector('[data-loading-words-target]');
-  if (!loadingWords || !wordsTarget) { markPageReady(); return; }
+  const wordsTarget = loadingWords.querySelector('[data-loading-words-target]');
+  const words = loadingWords.getAttribute('data-loading-words').split(',').map(w => w.trim());
 
-  const words = (loadingWords.getAttribute('data-loading-words') || '')
-    .split(',').map((w) => w.trim()).filter(Boolean);
+  const tl = gsap.timeline();
 
-  // Keep the page frozen under the overlay while it boots.
-  if (hasLenis && lenis) lenis.stop();
-
-  // Reduced motion: skip the choreography, just hold until the page is ready.
-  if (reducedMotion) {
-    wordsTarget.textContent = words[words.length - 1] || wordsTarget.textContent;
-    await pageReady;
-    gsap.set(loadingContainer, { autoAlpha: 0, display: "none" });
-    if (hasLenis && lenis) lenis.start();
-    settleScrollTriggers();
-    return;
-  }
-
-  // The preloader is already visible (styled visible-by-default in Webflow), so
-  // DON'T reset it here. Setting opacity:0 / yPercent on start yanked the
-  // already-shown words to invisible the moment this late-loading script ran —
-  // that hard reset after a delay is the abrupt "state change" flash. Instead,
-  // pick up from the visible state and just cycle the words, then play the outro.
-  const intro = gsap.timeline();
-  words.forEach((word) => {
-    intro.call(() => { wordsTarget.textContent = word; }, null, '+=0.2');
+  tl.set(loadingWords, {
+    yPercent: 50
   });
-  if (words.length) intro.to({}, { duration: 0.2 }); // let the last word breathe
 
-  // Let the whole animation finish AND make sure the page is ready to reveal.
-  await Promise.all([intro, pageReady]);
+  tl.to(loadingWords, {
+    opacity: 1,
+    yPercent: 0,
+    duration: 1,
+    ease: "Expo.easeInOut"
+  });
 
-  // Lift the overlay.
-  if (hasLenis && lenis) lenis.stop();
-  await gsap.timeline()
-    .to(loadingWords, { opacity: 0, yPercent: -75, duration: 0.8, ease: "Expo.easeIn" })
-    .to(loadingContainer, { autoAlpha: 0, duration: 0.6, ease: "Power1.easeInOut" }, "-=0.2");
+  words.forEach(word => {
+    tl.call(() => {
+      wordsTarget.textContent = word;
+    }, null, '+=0.15');
+  });
 
-  loadingContainer.style.display = "none";
-  if (hasLenis && lenis) lenis.start();
+  tl.to(loadingWords, {
+    opacity: 0,
+    yPercent: -75,
+    duration: 0.8,
+    ease: "Expo.easeIn"
+  });
 
-  // The page is now fully laid out, fonts/images loaded, scroll re-enabled.
-  // Recompute every ScrollTrigger's start/end — the nav-theme, parallax and
-  // reveal triggers were first measured while the overlay was up and the layout
-  // wasn't final, so without this the nav theme flips at the wrong scroll spots.
-  settleScrollTriggers();
+  tl.to(loadingContainer, {
+    autoAlpha: 0,
+    duration: 0.6,
+    ease: "Power1.easeInOut"
+  }, "+ -0.2");
 }
+
+// Initialize Welcoming Words Loader
+document.addEventListener('DOMContentLoaded', () => {
+  initWelcomingWordsLoader();
+});
 
 // Re-measure all ScrollTriggers after Lenis has had a frame to settle, then
 // re-assert the nav theme for whatever section is currently in view.
