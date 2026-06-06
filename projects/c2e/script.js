@@ -48,17 +48,25 @@ function initExample() {
 // NAV THEME — swap .nav-wrap to the opposite theme past 10% scroll, restore at top //
 function initNavTheme() {
   const nav = document.querySelector('.nav-wrap');
+  console.log('[navTheme] init, nav =', nav, '| classes =', nav && nav.className);
 
   // Whatever theme the nav starts in, the scrolled state is the other one.
   const startTheme  = nav.classList.contains('u-theme-light') ? 'u-theme-light' : 'u-theme-dark';
   const scrollTheme = startTheme === 'u-theme-light' ? 'u-theme-dark' : 'u-theme-light';
+  console.log('[navTheme] startTheme =', startTheme, '| scrollTheme =', scrollTheme);
 
   ScrollTrigger.create({
-    start: () => window.innerHeight * 0.1, // 10% of the viewport scrolled
+    start: () => {
+      const px = window.innerHeight * 0.1;
+      console.log('[navTheme] start px =', px);
+      return px;
+    }, // 10% of the viewport scrolled
     end: 'max',
     onToggle: (self) => {
+      console.log('[navTheme] toggle, isActive =', self.isActive, '| scroll =', self.scroll());
       nav.classList.toggle(startTheme, !self.isActive);
       nav.classList.toggle(scrollTheme, self.isActive);
+      console.log('[navTheme] classes now =', nav.className);
     }
   });
 }
