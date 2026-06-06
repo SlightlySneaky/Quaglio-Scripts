@@ -52,6 +52,9 @@ function initReveal() {
     const value = (el.getAttribute('data-reveal') || '').trim().toLowerCase();
     const type = ['chars', 'words', 'lines'].includes(value) ? value : 'lines';
 
+    // Match studio-quaglio's per-type stagger timing.
+    const stagger = { chars: 0.01, words: 0.02, lines: 0.08 }[type];
+
     const split = new SplitText(el, { type, [type]: `reveal-${type}` });
     const targets = split[type];
 
@@ -64,7 +67,7 @@ function initReveal() {
       duration: 1,
       ease: 'osmo',
       delay,
-      stagger: 0.08,
+      stagger: { each: stagger, from: 'start' },
       scrollTrigger: { trigger: el, start: 'top 85%', toggleActions: 'play none none none' }
     });
   });
