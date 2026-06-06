@@ -546,50 +546,86 @@ function initSuperformValidation() {
   const form = document.querySelector('[data-form-validate]');
   if (!form) return;
 
-  const isEmail = (v) => /\S+@\S+\.\S+/.test(v);
+  const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
-  const validateField = (field) => {
-    const parent = field.closest('[data-validate]');
-    if (!parent) return true; // no wrapper to label — skip silently
+  // Validate one [data-validate] group. Handles three shapes:
+  //   • radio/checkbox group  → wrap the inputs in [data-radiocheck-group] (min/max)
+  //   • <select>              → invalid if no real option chosen
+  //   • input / textarea      → required, email, pattern, min/max length
+  // Toggles is--filled / is--error / is--success on the group and returns validity.
+  const validateGroup = (group) => {
+    const radioGroup = group.querySelector('[data-radiocheck-group]');
 
-    const value     = field.value.trim();
-    const type      = (field.getAttribute('type') || field.tagName).toLowerCase();
-    const required  = field.hasAttribute('required');
-    const minLength = parseInt(field.getAttribute('minlength') || field.getAttribute('min'), 10);
-    const maxLength = parseInt(field.getAttribute('maxlength') || field.getAttribute('max'), 10);
+    if (radioGroup) {
+      const inputs  = radioGroup.querySelectorAll('input[type="radio"], input[type="checkbox"]');
+      const checked = radioGroup.querySelectorAll('input:checked');
+      const min = parseInt(radioGroup.getAttribute('min'), 10) || 1;
+      const max = parseInt(radioGroup.getAttribute('max'), 10) || inputs.length;
+      const isRadio = inputs[0] && inputs[0].type === 'radio';
+      const isValid = isRadio
+        ? checked.length >= 1
+        : checked.length >= min && checked.length <= max;
 
-    let isValid = true;
-    if (required && value === '') isValid = false;
-    if (value !== '') {
-      if (!isNaN(minLength) && value.length < minLength) isValid = false;
-      if (!isNaN(maxLength) && value.length > maxLength) isValid = false;
-      if (type === 'email' && !isEmail(value)) isValid = false;
+      group.classList.toggle('is--filled', checked.length > 0);
+      group.classList.toggle('is--error', !isValid);
+      group.classList.toggle('is--success', isValid);
+      return isValid;
     }
 
-    parent.classList.toggle('is--filled', value !== '');
-    parent.classList.toggle('is--error', !isValid);
-    parent.classList.toggle('is--success', isValid && value !== '');
+    const field = group.querySelector('input, select, textarea');
+    if (!field) return true; // nothing to validate in this group
+
+    const value    = field.value.trim();
+    const tag      = field.tagName.toLowerCase();
+    const type     = (field.getAttribute('type') || tag).toLowerCase();
+    const required = field.hasAttribute('required');
+    const minLen   = parseInt(field.getAttribute('minlength') || field.getAttribute('min'), 10);
+    const maxLen   = parseInt(field.getAttribute('maxlength') || field.getAttribute('max'), 10);
+    const pattern  = field.getAttribute('pattern'); // native HTML pattern, e.g. phone
+
+    let isValid = true;
+    if (tag === 'select') {
+      if (value === '' || value === 'disabled' || value === 'null' || value === 'false') isValid = false;
+    } else {
+      if (required && value === '') isValid = false;
+      if (value !== '') {
+        if (!isNaN(minLen) && value.length < minLen) isValid = false;
+        if (!isNaN(maxLen) && value.length > maxLen) isValid = false;
+        if (type === 'email' && !isEmail(value)) isValid = false;
+        // Native pattern is an implicit full-string match, so anchor it.
+        if (pattern) {
+          try {
+            if (!new RegExp('^(?:' + pattern + ')$').test(value)) isValid = false;
+          } catch (e) { /* invalid pattern attr — ignore */ }
+        }
+      }
+    }
+
+    group.classList.toggle('is--filled', value !== '');
+    group.classList.toggle('is--error', !isValid);
+    group.classList.toggle('is--success', isValid && value !== '');
     return isValid;
   };
 
-  // Live re-validation, only switched on once a field has been checked
+  // Live re-validation, only switched on once a group has been checked
   // (so untouched fields don't flash red before the user tries to advance).
   const liveBound = new WeakSet();
-  const startLive = (field) => {
-    if (liveBound.has(field)) return;
-    liveBound.add(field);
-    field.addEventListener('input', () => validateField(field));
+  const startLive = (group) => {
+    if (liveBound.has(group)) return;
+    liveBound.add(group);
+    group.querySelectorAll('input, select, textarea').forEach((el) => {
+      el.addEventListener('input',  () => validateGroup(group));
+      el.addEventListener('change', () => validateGroup(group));
+    });
   };
 
   const validateStep = (stepEl) => {
     let firstInvalid = null;
-    stepEl
-      .querySelectorAll('[data-validate] input, [data-validate] select, [data-validate] textarea')
-      .forEach((field) => {
-        const ok = validateField(field);
-        if (!ok && !firstInvalid) firstInvalid = field;
-        startLive(field);
-      });
+    stepEl.querySelectorAll('[data-validate]').forEach((group) => {
+      const ok = validateGroup(group);
+      startLive(group);
+      if (!ok && !firstInvalid) firstInvalid = group.querySelector('input, select, textarea');
+    });
     if (firstInvalid) firstInvalid.focus();
   };
 
