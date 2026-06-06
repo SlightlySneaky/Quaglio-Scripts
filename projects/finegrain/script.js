@@ -37,6 +37,7 @@ function initOnceFunctions() {
 
   // Runs once on first load
   // if (has('[data-something]')) initSomething();
+  if (document.querySelector('[form-open]')) initFormModal();
 }
 
 function initBeforeEnterFunctions(next) {
@@ -55,7 +56,6 @@ function initAfterEnterFunctions(next) {
   if (has('[data-parallax="trigger"]')) initGlobalParallax();
   if (has('.img')) initImageFadeIns();
   if (has('[data-hero-parallax]')) initHeroParallax();
-  if (has('[form-open]')) initFormModal();
   if (has('[data-slideshow="wrap"]')) initFadeScaleSlideshows();
   if (has('.team-item')) initTeamHover();
 
@@ -201,6 +201,7 @@ barba.init({
     // First load
     async once(data) {
       initOnceFunctions();
+      initAfterEnterFunctions(data.next.container);
 
       return runPageOnceAnimation(data.next.container);
     },
