@@ -55,7 +55,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-parallax="trigger"]')) initGlobalParallax();
   if (has('.img')) initImageFadeIns();
   if (has('[data-hero-parallax]')) initHeroParallax();
-  if (has('.popup_form')) initFormPopup();
+  if (has('[form-open]')) initFormModal();
   if (has('[data-slideshow="wrap"]')) initFadeScaleSlideshows();
   if (has('.team-item')) initTeamHover();
 
@@ -476,57 +476,52 @@ function initHeroParallax() {
   });
 }
 
-function initFormPopup(container = document) {
+// Form modal ([form-open] / [form-wrap]) — ported from inquiry-atelier
+function initFormModal() {
+  const openers = document.querySelectorAll("[form-open]");
+  const wrap    = document.querySelector("[form-wrap]");
+  if (!wrap) return;
 
-  const popup = container.querySelector(".popup_form");
-  const popupInner = container.querySelector(".popup_form_inner");
+  const inner   = wrap.querySelector("[form-inner]");
+  const bg      = wrap.querySelector("[form-bg]");
+  const closers = wrap.querySelectorAll("[form-close]");
+  if (!inner) { console.error("❌ Form modal: [form-inner] not found inside [form-wrap]"); return; }
+  if (!bg)    { console.error("❌ Form modal: [form-bg] not found inside [form-wrap]"); return; }
 
-  if (!popup || !popupInner) {
-    console.warn("Popup elements not found");
-    return;
+  gsap.set(wrap,  { display: "flex", autoAlpha: 0, pointerEvents: "none" });
+  gsap.set(bg,    { autoAlpha: 0 });
+  gsap.set(inner, { x: "100%" });
+
+  function openForm() {
+    gsap.set(wrap, { autoAlpha: 1, pointerEvents: "auto" });
+    const tl = gsap.timeline();
+    tl.to(bg, { autoAlpha: 1, duration: 0.5, ease: "power2.out" }, 0)
+      .to(inner, { x: "0%", duration: 0.65, ease: "power3.out" }, "-=0.15");
   }
 
-  // Custom ease
-  if (typeof CustomEase !== "undefined" && !gsap.parseEase("popupEase")) {
-    CustomEase.create("popupEase", "0.83, 0, 0.17, 1");
-  }
-
-  // OPEN
-  container.querySelectorAll("[form-popup]").forEach(trigger => {
-    trigger.addEventListener("click", () => {
-
-      popup.style.display = "flex";
-
-      gsap.fromTo(popup, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "popupEase" });
-
-      gsap.fromTo(popupInner, { xPercent: 100 }, {
-        xPercent: 0,
-        duration: 0.5,
-        ease: "popupEase"
-      });
-
+  function closeForm() {
+    const tl = gsap.timeline({
+      onComplete: () => gsap.set(wrap, { autoAlpha: 0, pointerEvents: "none" }),
     });
-  });
+    tl.to(inner, { x: "100%", duration: 0.5, ease: "power3.in" }, 0)
+      .to(bg, { autoAlpha: 0, duration: 0.4, ease: "power2.in" }, 0.1);
+  }
 
-  // CLOSE
-  container.querySelectorAll("[form-close]").forEach(trigger => {
-    trigger.addEventListener("click", () => {
+  openers.forEach((el) => el.addEventListener("click", openForm));
+  closers.forEach((el) => el.addEventListener("click", closeForm));
+  bg.addEventListener("click", closeForm);
 
-      gsap.to(popupInner, {
-        xPercent: 100,
-        duration: 0.5,
-        ease: "popupEase"
-      });
-
-      gsap.to(popup, {
-        opacity: 0,
-        duration: 0.3,
-        ease: "popupEase",
-        onComplete: () => {
-          popup.style.display = "none";
-        }
-      });
-
+  // Highlight the selected radio's label
+  wrap.querySelectorAll('input[type="radio"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      wrap
+        .querySelectorAll(`input[type="radio"][name="${radio.name}"]`)
+        .forEach((r) => {
+          const text = r.closest("label")?.querySelector(".w-form-label");
+          if (text) text.style.color = "";
+        });
+      const text = radio.closest("label")?.querySelector(".w-form-label");
+      if (text) text.style.color = "white";
     });
   });
 }
