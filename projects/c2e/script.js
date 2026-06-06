@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.querySelector('[form-open]'))           initFormModal();
   if (document.querySelector('[data-form-validate]'))  initSuperformValidation();
   if (document.querySelector('.nav_wrap'))             initNavTheme();
+  if (document.querySelector('[data-menu-button]'))    initMenuButton();
 });
 
 
@@ -59,6 +60,72 @@ function initNavTheme() {
     onToggle: (self) => {
       nav.classList.toggle(startTheme, !self.isActive);
       nav.classList.toggle(scrollTheme, self.isActive);
+    }
+  });
+}
+
+// MENU BUTTON //
+function initMenuButton() {
+  const menuButton = document.querySelector("[data-menu-button]");
+  const lines = document.querySelectorAll(".menu-button-line");
+  const [line1, line2, line3] = lines;
+  const nav = document.querySelector('.nav_wrap');
+
+  if (!menuButton || lines.length < 3) return;
+
+  const setNavLight = (force) => {
+    if (!nav || nav._isAlwaysLight || !nav._colorTl) return;
+    nav._menuForceLight = force;
+    if (force) {
+      nav._colorTl.play();
+    } else {
+      nav._colorST && nav._colorST.isActive ? nav._colorTl.play() : nav._colorTl.reverse();
+    }
+  };
+
+  const menuButtonTl = gsap.timeline({
+    defaults: {
+      overwrite: "auto",
+      ease: "button-ease",
+      duration: 0.3
+    }
+  });
+
+  const menuOpen = () => {
+    menuButtonTl.clear()
+      .to(line2, { scaleX: 0, opacity: 0 })
+      .to(line1, { x: "-1.3em", opacity: 0 }, "<")
+      .to(line3, { x: "1.3em", opacity: 0 }, "<")
+      .to([line1, line3], { opacity: 0, duration: 0.1 }, "<+=0.2")
+      .set(line1, { rotate: -135, y: "-1.3em", scaleX: 0.9 })
+      .set(line3, { rotate: 135, y: "-1.4em", scaleX: 0.9 }, "<")
+      .to(line1, { opacity: 1, x: "0em", y: "0.5em" })
+      .to(line3, { opacity: 1, x: "0em", y: "-0.25em" }, "<+=0.1");
+  };
+
+  const menuClose = () => {
+    menuButtonTl.clear()
+      .to([line1, line2, line3], {
+        scaleX: 1,
+        rotate: 0,
+        x: "0em",
+        y: "0em",
+        opacity: 1,
+        duration: 0.45,
+        overwrite: "auto"
+      });
+  };
+
+  menuButton.addEventListener("click", () => {
+    const currentState = menuButton.getAttribute("data-menu-button");
+    if (currentState === "burger") {
+      menuOpen();
+      setNavLight(true);
+      menuButton.setAttribute("data-menu-button", "close");
+    } else {
+      menuClose();
+      setNavLight(false);
+      menuButton.setAttribute("data-menu-button", "burger");
     }
   });
 }
