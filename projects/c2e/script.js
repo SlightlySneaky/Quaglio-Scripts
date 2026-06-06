@@ -52,7 +52,7 @@ function initNavTheme() {
   ScrollTrigger.create({
     start: () => window.innerHeight * 0.1, // 10% of the viewport scrolled
     end: 'max',
-    onToggle: (self) => nav.classList.toggle('u-theme-light', self.isActive)
+    onToggle: (self) => nav.classList.toggle('.u-theme-light', self.isActive)
   });
 }
 
