@@ -575,6 +575,7 @@ async function initWelcomingWordsLoader() {
     await pageReady;
     gsap.set(loadingContainer, { autoAlpha: 0, display: "none" });
     if (hasLenis && lenis) lenis.start();
+    settleScrollTriggers();
     return;
   }
 
@@ -598,6 +599,22 @@ async function initWelcomingWordsLoader() {
 
   loadingContainer.style.display = "none";
   if (hasLenis && lenis) lenis.start();
+
+  // The page is now fully laid out, fonts/images loaded, scroll re-enabled.
+  // Recompute every ScrollTrigger's start/end — the nav-theme, parallax and
+  // reveal triggers were first measured while the overlay was up and the layout
+  // wasn't final, so without this the nav theme flips at the wrong scroll spots.
+  settleScrollTriggers();
+}
+
+// Re-measure all ScrollTriggers after Lenis has had a frame to settle, then
+// re-assert the nav theme for whatever section is currently in view.
+function settleScrollTriggers() {
+  if (!hasScrollTrigger) return;
+  requestAnimationFrame(() => {
+    if (hasLenis && lenis) lenis.resize();
+    ScrollTrigger.refresh();
+  });
 }
 
 
