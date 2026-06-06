@@ -49,10 +49,11 @@ function initReveal() {
   document.querySelectorAll('[data-reveal]').forEach((el) => {
     const delay = parseFloat(el.getAttribute('data-reveal-delay')) || 0;
 
-    gsap.set(el, { autoAlpha: 0, filter: 'blur(12px)', willChange: 'filter, opacity' });
+    gsap.set(el, { autoAlpha: 0, y: '1rem', filter: 'blur(12px)', willChange: 'transform, filter, opacity' });
 
     gsap.to(el, {
       autoAlpha: 1,
+      y: 0,
       filter: 'blur(0px)',
       duration: 1,
       ease: 'osmo',
