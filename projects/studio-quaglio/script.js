@@ -600,8 +600,8 @@ function initNavAnimation() {
   if (!nav) return;
 
   const getThemeForSection = (section) => {
-    if (section.classList.contains("u-theme-dark"))  return "u-theme-light";
-    if (section.classList.contains("u-theme-light")) return "u-theme-dark";
+    if (section.classList.contains("u-theme-dark"))  return "u-theme-dark";
+    if (section.classList.contains("u-theme-light")) return "u-theme-light";
     return null;
   };
 
