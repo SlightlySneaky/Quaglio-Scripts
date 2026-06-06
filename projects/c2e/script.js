@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.querySelector('.img:not(.no-para)'))    initImageParallax();
   if (document.querySelector('[form-open]'))           initFormModal();
   if (document.querySelector('[data-form-validate]'))  initSuperformValidation();
+  if (document.querySelector('.nav-wrap'))             initNavTheme();
 });
 
 
@@ -44,24 +45,45 @@ function initExample() {
   // ...
 }
 
+// NAV THEME — add u-theme-light to .nav-wrap past 10% of viewport scroll, remove back at top //
+function initNavTheme() {
+  const nav = document.querySelector('.nav-wrap');
+
+  ScrollTrigger.create({
+    start: () => window.innerHeight * 0.1, // 10% of the viewport scrolled
+    end: 'max',
+    onToggle: (self) => nav.classList.toggle('u-theme-light', self.isActive)
+  });
+}
+
+// Prep a [data-reveal] element: split it, set the hidden start state, and return
+// the split targets + per-type stagger so the caller can tween them standalone
+// or sequenced inside a parent timeline.
+function prepReveal(el) {
+  const value = (el.getAttribute('data-reveal') || '').trim().toLowerCase();
+  const type = ['chars', 'words', 'lines'].includes(value) ? value : 'lines';
+
+  // Match studio-quaglio's per-type stagger timing.
+  const stagger = { chars: 0.01, words: 0.02, lines: 0.08 }[type];
+
+  // Split chars inside words so words wrap as a unit (no stray chars on the next line).
+  const splitType = type === 'chars' ? 'chars,words' : type;
+
+  const split = new SplitText(el, { type: splitType, [type]: `reveal-${type}` });
+  const targets = split[type];
+
+  gsap.set(targets, { autoAlpha: 0, y: '1rem', filter: 'blur(12px)', willChange: 'transform, filter, opacity' });
+  return { targets, stagger };
+}
+
 // REVEAL — blur + opacity fade-in, split & staggered (lines by default; chars/words/lines via attr value) //
 function initReveal() {
   document.querySelectorAll('[data-reveal]').forEach((el) => {
+    // Children of a [data-reveal-fade] are sequenced by their parent — skip here.
+    if (el.closest('[data-reveal-fade]')) return;
+
     const delay = parseFloat(el.getAttribute('data-reveal-delay')) || 0;
-
-    const value = (el.getAttribute('data-reveal') || '').trim().toLowerCase();
-    const type = ['chars', 'words', 'lines'].includes(value) ? value : 'lines';
-
-    // Match studio-quaglio's per-type stagger timing.
-    const stagger = { chars: 0.01, words: 0.02, lines: 0.08 }[type];
-
-    // Split chars inside words so words wrap as a unit (no stray chars on the next line).
-    const splitType = type === 'chars' ? 'chars,words' : type;
-
-    const split = new SplitText(el, { type: splitType, [type]: `reveal-${type}` });
-    const targets = split[type];
-
-    gsap.set(targets, { autoAlpha: 0, y: '1rem', filter: 'blur(12px)', willChange: 'transform, filter, opacity' });
+    const { targets, stagger } = prepReveal(el);
 
     gsap.to(targets, {
       autoAlpha: 1,
@@ -76,21 +98,41 @@ function initReveal() {
   });
 }
 
-// REVEAL CLIP — fade up from blur + opacity (no clip-path) //
+// REVEAL CLIP — fade up from blur + opacity, then cascade any nested [data-reveal] children //
 function initRevealClip() {
+  const STEP = 0.15; // how slightly each nested reveal trails the previous
+
   document.querySelectorAll('[data-reveal-fade]').forEach((el) => {
     const delay = parseFloat(el.getAttribute('data-reveal-fade-delay')) || 0;
 
+    // Prep nested [data-reveal] children up front so they sit hidden until their turn.
+    const children = [...el.querySelectorAll('[data-reveal]')].map(prepReveal);
+
     gsap.set(el, { autoAlpha: 0, y: '2em', filter: 'blur(12px)', willChange: 'transform, filter, opacity' });
 
-    gsap.to(el, {
+    const tl = gsap.timeline({
+      delay,
+      scrollTrigger: { trigger: el, start: 'top 90%', toggleActions: 'play none none none' }
+    });
+
+    tl.to(el, {
       autoAlpha: 1,
       y: '0em',
       filter: 'blur(0px)',
       duration: 1,
-      ease: 'osmo',
-      delay,
-      scrollTrigger: { trigger: el, start: 'top 90%', toggleActions: 'play none none none' }
+      ease: 'osmo'
+    });
+
+    // Parent first, then each child staggered just slightly after the previous.
+    children.forEach(({ targets, stagger }) => {
+      tl.to(targets, {
+        autoAlpha: 1,
+        y: 0,
+        filter: 'blur(0px)',
+        duration: 1,
+        ease: 'osmo',
+        stagger: { each: stagger, from: 'start' }
+      }, `<${STEP}`);
     });
   });
 }
