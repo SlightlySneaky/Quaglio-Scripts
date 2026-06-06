@@ -28,6 +28,27 @@ CustomEase.create("osmo", "0.625, 0.05, 0, 1");
 gsap.defaults({ ease: "osmo", duration: durationDefault });
 
 
+// -----------------------------------------
+// WELCOMING WORDS LOADER — boot gate
+// -----------------------------------------
+// `pageReady` resolves once every page script has been wired up and
+// ScrollTrigger has been refreshed (see the end of initAfterEnterFunctions).
+// The welcoming-words overlay keeps itself on top until this resolves, so the
+// whole page boots behind the loader and nothing has to initialise while the
+// user scrolls.
+let _markPageReady = null;
+const pageReady = new Promise((resolve) => { _markPageReady = resolve; });
+function markPageReady() {
+  if (_markPageReady) { _markPageReady(); _markPageReady = null; }
+}
+
+// Safety net: never let the overlay hang if something in the boot chain throws.
+window.addEventListener("load", () => setTimeout(markPageReady, 2000), { once: true });
+
+// Start the loader before anything else — it shows the overlay immediately and
+// only lifts it once both the words have cycled AND the page reports ready.
+initWelcomingWordsLoader();
+
 
 // -----------------------------------------
 // FUNCTION REGISTRY
@@ -80,6 +101,10 @@ function initAfterEnterFunctions(next) {
   if (hasScrollTrigger) {
     ScrollTrigger.refresh();
   }
+
+  // Everything for this page is now wired up and positions are measured.
+  // Tell the welcoming-words loader it's safe to lift the overlay.
+  markPageReady();
 }
 
 
@@ -488,6 +513,59 @@ function initBarbaNavUpdate(data) {
 // -----------------------------------------
 // YOUR FUNCTIONS GO BELOW HERE
 // -----------------------------------------
+
+
+// ============================================
+// WELCOMING WORDS LOADER ([data-loading-container])
+// ============================================
+// Runs first, on top of everything. The intro + word cycle play while the rest
+// of the page boots behind the overlay (Barba once + initAfterEnterFunctions +
+// ScrollTrigger.refresh). The overlay only clears once BOTH the words have all
+// shown AND `pageReady` resolves, so by the time it lifts every script is
+// already wired up and measured — nothing initialises mid-scroll.
+async function initWelcomingWordsLoader() {
+  const loadingContainer = document.querySelector('[data-loading-container]');
+  if (!loadingContainer) { markPageReady(); return; } // no loader on this page
+
+  const loadingWords = loadingContainer.querySelector('[data-loading-words]');
+  const wordsTarget  = loadingWords && loadingWords.querySelector('[data-loading-words-target]');
+  if (!loadingWords || !wordsTarget) { markPageReady(); return; }
+
+  const words = (loadingWords.getAttribute('data-loading-words') || '')
+    .split(',').map((w) => w.trim()).filter(Boolean);
+
+  // Keep the page frozen under the overlay while it boots.
+  if (hasLenis && lenis) lenis.stop();
+
+  // Reduced motion: skip the choreography, just hold until the page is ready.
+  if (reducedMotion) {
+    wordsTarget.textContent = words[words.length - 1] || wordsTarget.textContent;
+    await pageReady;
+    gsap.set(loadingContainer, { autoAlpha: 0, display: "none" });
+    if (hasLenis && lenis) lenis.start();
+    return;
+  }
+
+  // Intro + cycle the words. (GSAP 3 timelines are awaitable.)
+  const intro = gsap.timeline();
+  intro.set(loadingWords, { yPercent: 50, opacity: 0 });
+  intro.to(loadingWords, { opacity: 1, yPercent: 0, duration: 1, ease: "Expo.easeInOut" });
+  words.forEach((word) => {
+    intro.call(() => { wordsTarget.textContent = word; }, null, '+=0.15');
+  });
+  await intro;
+
+  // Hold the overlay until the page has finished wiring itself up behind it.
+  await pageReady;
+
+  const outro = gsap.timeline();
+  outro.to(loadingWords, { opacity: 0, yPercent: -75, duration: 0.8, ease: "Expo.easeIn" });
+  outro.to(loadingContainer, { autoAlpha: 0, duration: 0.6, ease: "Power1.easeInOut" }, "-=0.2");
+  await outro;
+
+  loadingContainer.style.display = "none";
+  if (hasLenis && lenis) lenis.start();
+}
 
 
 // ============================================
