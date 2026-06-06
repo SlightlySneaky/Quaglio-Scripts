@@ -2,45 +2,14 @@
      Studio Quaglio — Webflow embed (single source while testing).
 
      Every domain (.webflow.io AND the custom domain) loads script.js directly —
-     no staging/prod split, no gsap polling, no console banner. Just the critical
-     preloader paint + the script.
+     no staging/prod split.
 
-     Placement:
-       • Put this whole block in the page/site <head> so the white preloader
-         paints on the very first frame.
-       • GSAP + its plugins (ScrollTrigger, Observer, CustomEase, SplitText) and
-         Barba must load ABOVE the script.js tag — script.js registers them on
-         its first line and calls barba.init immediately. Easiest: load those
-         libraries in the head above this, or move the script.js tag to the end
-         of <body> (after the libraries and the page markup).
+     Load GSAP + its plugins (ScrollTrigger, Observer, CustomEase, SplitText) and
+     Barba ABOVE this tag — script.js registers them on its first line and calls
+     barba.init immediately. Easiest reliable placement: those libraries in the
+     head, and this tag at the END of <body> (after the libraries and the page
+     markup) so the DOM and GSAP are both ready.
      ============================================================ -->
-
-<!-- Paint the WHITE preloader from the very first frame, before script.js loads
-     and runs the word animation — no flash. Scoped to `sq-preload`, which
-     script.js removes the instant the preloader finishes (so the page's own
-     backgrounds take over afterwards and Barba navigations never get stuck). -->
-<script>document.documentElement.classList.add('sq-preload');</script>
-<style>
-  html.sq-preload { background-color: #fff; }
-  html.sq-preload [data-loading-container] {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #fff;
-    opacity: 1;
-    visibility: visible;
-  }
-</style>
 
 <!-- Quaglio Scripts -->
 <script src="https://quaglio-scripts.vercel.app/projects/studio-quaglio/script.js"></script>
-
-<!-- Safety: release the preload paint even if script.js never loads/runs. -->
-<script>
-  setTimeout(function () {
-    document.documentElement.classList.remove('sq-preload');
-  }, 12000);
-</script>
