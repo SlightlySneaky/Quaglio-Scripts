@@ -1,0 +1,78 @@
+<!-- ============================================================
+     Finegrain — Webflow embed.
+
+     Staging  (.webflow.io)  → loads script.js       (live working file, always fresh)
+     Production (custom domain) → loads script.prod.js (frozen snapshot)
+
+     - Waits for GSAP + CustomEase before injecting the script (script.js calls
+       gsap.registerPlugin(CustomEase) on its first lines), so placement
+       (head or footer) is irrelevant. ScrollTrigger / Lenis / Barba are
+       optional — the script self-detects them, so we don't gate on them.
+     - Logs a STAGING / PRODUCTION banner via a hidden-iframe console, in case
+       the site's head code replaces window.console.* with no-ops. The iframe
+       console is untouched, so the banner always shows.
+
+     To make production silent later: leave as-is (production already stays silent).
+
+     Deploy:
+       push staging          push edits → updates STAGING only (.webflow.io)
+       push prod             snapshot script.js → script.prod.js → LIVE
+                             (pick "finegrain" in the project menu)
+     ============================================================ -->
+<script>
+(function () {
+  var BASE = 'https://quaglio-scripts.vercel.app/projects/finegrain';
+  // .webflow.io (and Designer preview) = staging; custom domain = production
+  var staging = /\.webflow\.io$/.test(location.hostname);
+  var file = staging ? 'script.js' : 'script.prod.js';
+  // No cache-buster: Vercel serves these with `max-age=0, must-revalidate`, so the
+  // browser already revalidates every load. A `?t=` param triggered ad blockers
+  // (ERR_BLOCKED_BY_CLIENT), so it is intentionally omitted.
+
+  // Staging logs a banner; production stays silent.
+  // If the site disables window.console.*, we borrow a clean console from a hidden iframe.
+  if (staging) {
+    var log = (function () {
+      try {
+        var f = document.createElement('iframe');
+        f.style.display = 'none';
+        (document.body || document.head || document.documentElement).appendChild(f);
+        var con = f.contentWindow.console;          // fresh, un-patched console
+        if (con && typeof con.log === 'function') return con.log.bind(con);
+      } catch (e) {}
+      return (window.console && window.console.log)
+        ? window.console.log.bind(window.console)
+        : function () {};
+    })();
+
+    log('%c STAGING %c Finegrain — testing mode (' + file + ')',
+      'background:#e67e22;color:#fff;font-weight:700;padding:2px 6px;border-radius:3px',
+      'color:#e67e22;font-weight:600');
+  }
+
+  function inject() {
+    var s = document.createElement('script');
+    s.src = BASE + '/' + file;
+    document.head.appendChild(s);
+  }
+
+  // script.js registers CustomEase on its first lines, so wait for gsap + CustomEase.
+  // ScrollTrigger / Lenis / Barba are optional and self-detected, so we don't gate on them.
+  function ready() {
+    return window.gsap && window.CustomEase;
+  }
+
+  if (ready()) {
+    inject();
+  } else {
+    var waited = 0;
+    var iv = setInterval(function () {
+      waited += 50;
+      if (ready() || waited >= 10000) {  // give up after 10s and try anyway
+        clearInterval(iv);
+        inject();
+      }
+    }, 50);
+  }
+})();
+</script>
