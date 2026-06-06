@@ -557,6 +557,13 @@ function initSuperformValidation() {
 
   const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
+  // A phone is "real" if it contains ONLY digits and the usual separators
+  // ( + ( ) - . / and spaces ) and has at least this many actual digits.
+  // type="tel" has no native validation, so this is what rejects "call me maybe".
+  const PHONE_MIN_DIGITS = 6;
+  const isPhone = (v) =>
+    /^[\d\s()+\-./]*$/.test(v) && (v.match(/\d/g) || []).length >= PHONE_MIN_DIGITS;
+
   // Validate one [data-validate] group. Handles three shapes:
   //   • radio/checkbox group  → wrap the inputs in [data-radiocheck-group] (min/max)
   //   • <select>              → invalid if no real option chosen
@@ -601,6 +608,7 @@ function initSuperformValidation() {
         if (!isNaN(minLen) && value.length < minLen) isValid = false;
         if (!isNaN(maxLen) && value.length > maxLen) isValid = false;
         if (type === 'email' && !isEmail(value)) isValid = false;
+        if (type === 'tel'   && !isPhone(value)) isValid = false;
         // Native pattern is an implicit full-string match, so anchor it.
         if (pattern) {
           try {
@@ -629,13 +637,18 @@ function initSuperformValidation() {
   };
 
   const validateStep = (stepEl) => {
+    let allValid = true;
     let firstInvalid = null;
     stepEl.querySelectorAll('[data-validate]').forEach((group) => {
       const ok = validateGroup(group);
       startLive(group);
-      if (!ok && !firstInvalid) firstInvalid = group.querySelector('input, select, textarea');
+      if (!ok) {
+        allValid = false;
+        if (!firstInvalid) firstInvalid = group.querySelector('input, select, textarea');
+      }
     });
     if (firstInvalid) firstInvalid.focus();
+    return allValid;
   };
 
   // Delegated on the document in the CAPTURE phase: Superform adds/rewrites its
@@ -653,10 +666,16 @@ function initSuperformValidation() {
     if (!trigger || !form.contains(trigger)) return;
     if (trigger.hasAttribute('sf-goto') && !isForward(trigger)) return; // back/prev
     const step = trigger.closest('[sf-step]');
-    // Superform synchronously re-renders the step on a goto click, wiping any
-    // classes we set during the click. Apply ours on the next frame, after that
-    // render has run, so the error/success states survive.
-    if (step) requestAnimationFrame(() => validateStep(step));
+    if (!step) return;
+    // Validate synchronously so we can gate the step ourselves. If anything is
+    // invalid we block here: Superform never runs, so it can neither advance nor
+    // re-render away our error classes. (type="tel" has no native rule, so this
+    // is the ONLY thing stopping a non-number phone.) If valid, we let Superform
+    // take over and handle the navigation.
+    if (!validateStep(step)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
   }, true);
 }
 
