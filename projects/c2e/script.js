@@ -44,20 +44,27 @@ function initExample() {
   // ...
 }
 
-// REVEAL — blur + opacity fade-in //
+// REVEAL — blur + opacity fade-in, split & staggered (lines by default; chars/words/lines via attr value) //
 function initReveal() {
   document.querySelectorAll('[data-reveal]').forEach((el) => {
     const delay = parseFloat(el.getAttribute('data-reveal-delay')) || 0;
 
-    gsap.set(el, { autoAlpha: 0, y: '1rem', filter: 'blur(12px)', willChange: 'transform, filter, opacity' });
+    const value = (el.getAttribute('data-reveal') || '').trim().toLowerCase();
+    const type = ['chars', 'words', 'lines'].includes(value) ? value : 'lines';
 
-    gsap.to(el, {
+    const split = new SplitText(el, { type, [type]: `reveal-${type}` });
+    const targets = split[type];
+
+    gsap.set(targets, { autoAlpha: 0, y: '1rem', filter: 'blur(12px)', willChange: 'transform, filter, opacity' });
+
+    gsap.to(targets, {
       autoAlpha: 1,
       y: 0,
       filter: 'blur(0px)',
       duration: 1,
       ease: 'osmo',
       delay,
+      stagger: 0.08,
       scrollTrigger: { trigger: el, start: 'top 85%', toggleActions: 'play none none none' }
     });
   });
