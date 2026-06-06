@@ -55,7 +55,10 @@ function initReveal() {
     // Match studio-quaglio's per-type stagger timing.
     const stagger = { chars: 0.01, words: 0.02, lines: 0.08 }[type];
 
-    const split = new SplitText(el, { type, [type]: `reveal-${type}` });
+    // Split chars inside words so words wrap as a unit (no stray chars on the next line).
+    const splitType = type === 'chars' ? 'chars,words' : type;
+
+    const split = new SplitText(el, { type: splitType, [type]: `reveal-${type}` });
     const targets = split[type];
 
     gsap.set(targets, { autoAlpha: 0, y: '1rem', filter: 'blur(12px)', willChange: 'transform, filter, opacity' });
