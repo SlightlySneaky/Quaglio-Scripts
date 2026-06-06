@@ -108,7 +108,7 @@ function initRevealClip() {
     // Prep nested [data-reveal] children up front so they sit hidden until their turn.
     const children = [...el.querySelectorAll('[data-reveal]')].map(prepReveal);
 
-    gsap.set(el, { autoAlpha: 0, y: '2em', filter: 'blur(12px)', willChange: 'transform, filter, opacity' });
+    gsap.set(el, { autoAlpha: 0, y: '1rem', filter: 'blur(12px)', willChange: 'transform, filter, opacity' });
 
     const tl = gsap.timeline({
       delay,
@@ -117,7 +117,7 @@ function initRevealClip() {
 
     tl.to(el, {
       autoAlpha: 1,
-      y: '0em',
+      y: 0,
       filter: 'blur(0px)',
       duration: 1,
       ease: 'osmo'
