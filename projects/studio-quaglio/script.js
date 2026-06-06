@@ -85,7 +85,7 @@ function initAfterEnterFunctions(next) {
   // Runs after enter animation completes
   // if (has('[data-something]')) initSomething();
     // Runs after enter animation completes
-  if (document.querySelector('[data-theme-nav="true"]'))    initNavAnimation();
+  if (document.querySelector('[data-theme-nav]'))           initNavAnimation();
   if (has('[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]')) initSplitTextAndReveal();
   if (has('[data-hero-parallax]'))                initHeroParallax();
   if (has('[data-parallax="trigger"]'))           initGlobalParallax();
@@ -1210,3 +1210,115 @@ function initSwiperSlider() {
     });
   });
 }
+
+
+// ============================================
+// SVG FILL LOOP
+// ============================================
+// Self-contained: runs on DOMContentLoaded (or immediately) and re-scans via a
+// MutationObserver, so it starts early — like the preloader — and keeps running.
+// Loops fill in/out across any SVG whose children carry `svg-elem-N` classes.
+(() => {
+  const COLOR       = "rgb(91, 139, 172)";
+  const DURATION_MS = 700;
+  const STAGGER_MS  = 80;
+  const HOLD_MS     = 150;
+
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  function isInsideDefs(el) { return !!el.closest("defs"); }
+
+  function getAnimatedSvgs(root = document) {
+    return Array.from(root.querySelectorAll("svg"))
+      .filter(svg => svg.querySelector('[class*="svg-elem-"]'));
+  }
+
+  function getIndex(el) {
+    for (const cls of el.classList) {
+      const m = cls.match(/^svg-elem-(\d+)$/);
+      if (m) return parseInt(m[1], 10);
+    }
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  function getTargets(svg) {
+    return Array.from(svg.querySelectorAll('[class*="svg-elem-"]'))
+      .filter(el => !isInsideDefs(el))
+      .map(el => ({ el, i: getIndex(el) }))
+      .sort((a, b) => a.i - b.i)
+      .map(x => x.el);
+  }
+
+  function cancelAnimations(targets) {
+    targets.forEach(el => el.getAnimations?.().forEach(a => a.cancel()));
+  }
+
+  async function animateForward(targets) {
+    cancelAnimations(targets);
+    targets.forEach(el => el.setAttribute("fill", "transparent"));
+    const anims = targets.map((el, idx) =>
+      el.animate([{ fill: "transparent" }, { fill: COLOR }], {
+        duration: DURATION_MS, delay: idx * STAGGER_MS, easing: "ease-in-out", fill: "forwards"
+      })
+    );
+    try { await anims[anims.length - 1].finished; } catch (e) {}
+    await sleep(HOLD_MS);
+  }
+
+  async function animateBackward(targets) {
+    cancelAnimations(targets);
+    targets.forEach(el => el.setAttribute("fill", COLOR));
+    const anims = [...targets].reverse().map((el, idx) =>
+      el.animate([{ fill: COLOR }, { fill: "transparent" }], {
+        duration: DURATION_MS, delay: idx * STAGGER_MS, easing: "ease-in-out", fill: "forwards"
+      })
+    );
+    try { await anims[anims.length - 1].finished; } catch (e) {}
+    await sleep(HOLD_MS);
+  }
+
+  async function loopSvg(svg) {
+    const targets = getTargets(svg);
+    if (!targets.length) return;
+    while (true) {
+      await animateForward(targets);
+      await animateBackward(targets);
+    }
+  }
+
+  function init() {
+    getAnimatedSvgs().forEach(svg => {
+      if (svg.__fillLoopStarted) return;
+      svg.__fillLoopStarted = true;
+      loopSvg(svg);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
+  new MutationObserver(() => init()).observe(document.body, { childList: true, subtree: false });
+})();
+
+
+// ============================================
+// TIMEZONE NAV (.bne-time)
+// ============================================
+// Live Brisbane clock in the nav. Runs immediately; the script loads at the end
+// of <body> so the nav is already parsed when this looks for .bne-time.
+(() => {
+  const el = document.querySelector(".bne-time");
+  if (!el) return;
+  function updateTime() {
+    el.textContent = new Intl.DateTimeFormat("en-AU", {
+      timeZone: "Australia/Brisbane",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hour12: false
+    }).format(new Date());
+  }
+  updateTime();
+  setInterval(updateTime, 1000);
+})();
