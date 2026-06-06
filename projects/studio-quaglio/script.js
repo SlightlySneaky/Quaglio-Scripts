@@ -579,14 +579,16 @@ async function initWelcomingWordsLoader() {
     return;
   }
 
-  // Full intro + cycle through every word once. (GSAP 3 timelines are awaitable.)
+  // The preloader is already visible (styled visible-by-default in Webflow), so
+  // DON'T reset it here. Setting opacity:0 / yPercent on start yanked the
+  // already-shown words to invisible the moment this late-loading script ran —
+  // that hard reset after a delay is the abrupt "state change" flash. Instead,
+  // pick up from the visible state and just cycle the words, then play the outro.
   const intro = gsap.timeline();
-  intro.set(loadingWords, { yPercent: 50, opacity: 0 });
-  intro.to(loadingWords, { opacity: 1, yPercent: 0, duration: 1, ease: "Expo.easeInOut" });
   words.forEach((word) => {
-    intro.call(() => { wordsTarget.textContent = word; }, null, '+=0.15');
+    intro.call(() => { wordsTarget.textContent = word; }, null, '+=0.2');
   });
-  if (words.length) intro.to({}, { duration: 0.15 }); // let the last word breathe
+  if (words.length) intro.to({}, { duration: 0.2 }); // let the last word breathe
 
   // Let the whole animation finish AND make sure the page is ready to reveal.
   await Promise.all([intro, pageReady]);
