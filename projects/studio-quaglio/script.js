@@ -549,11 +549,12 @@ function initBarbaNavUpdate(data) {
 // ============================================
 // WELCOMING WORDS LOADER ([data-loading-container])
 // ============================================
-// Runs first, on top of everything. The overlay stays up for exactly as long
-// as the page takes to wire itself up: a quick intro reveal, then the words
-// cycle (looping if needed) WHILE the scripts boot behind it, and the instant
-// `pageReady` resolves the outro plays. No fixed minimum padding — the loader's
-// length is the page's real setup time, so it's never longer than it must be.
+// Runs first, on top of everything. The loader always plays its FULL designed
+// animation — intro reveal, then every word in turn, then the outro. Page setup
+// happens concurrently behind the overlay; `pageReady` only gates the outro, so
+// we never reveal the page before it's wired up. Because the Barba lifecycle
+// fix makes setup resolve quickly, `pageReady` is virtually always ready before
+// the words finish, so this adds no extra wait — the animation just completes.
 async function initWelcomingWordsLoader() {
   const loadingContainer = document.querySelector('[data-loading-container]');
   if (!loadingContainer) { markPageReady(); return; } // no loader on this page
@@ -568,9 +569,6 @@ async function initWelcomingWordsLoader() {
   // Keep the page frozen under the overlay while it boots.
   if (hasLenis && lenis) lenis.stop();
 
-  let ready = false;
-  pageReady.then(() => { ready = true; });
-
   // Reduced motion: skip the choreography, just hold until the page is ready.
   if (reducedMotion) {
     wordsTarget.textContent = words[words.length - 1] || wordsTarget.textContent;
@@ -580,24 +578,23 @@ async function initWelcomingWordsLoader() {
     return;
   }
 
-  // Quick intro reveal. (GSAP 3 tweens/timelines are awaitable.)
-  await gsap.timeline()
-    .set(loadingWords, { yPercent: 50, opacity: 0 })
-    .to(loadingWords, { opacity: 1, yPercent: 0, duration: 0.6, ease: "Expo.easeInOut" });
+  // Full intro + cycle through every word once. (GSAP 3 timelines are awaitable.)
+  const intro = gsap.timeline();
+  intro.set(loadingWords, { yPercent: 50, opacity: 0 });
+  intro.to(loadingWords, { opacity: 1, yPercent: 0, duration: 1, ease: "Expo.easeInOut" });
+  words.forEach((word) => {
+    intro.call(() => { wordsTarget.textContent = word; }, null, '+=0.15');
+  });
+  if (words.length) intro.to({}, { duration: 0.15 }); // let the last word breathe
 
-  // Cycle the words while the page boots — but bail the instant it's ready, so
-  // the overlay never outlasts the actual setup work.
-  let i = 0;
-  while (!ready) {
-    if (words.length) wordsTarget.textContent = words[i++ % words.length];
-    await Promise.race([gsap.delayedCall(0.18, () => {}), pageReady]);
-  }
+  // Let the whole animation finish AND make sure the page is ready to reveal.
+  await Promise.all([intro, pageReady]);
 
-  // Page is wired up and measured — lift the overlay.
+  // Lift the overlay.
   if (hasLenis && lenis) lenis.stop();
   await gsap.timeline()
-    .to(loadingWords, { opacity: 0, yPercent: -75, duration: 0.6, ease: "Expo.easeIn" })
-    .to(loadingContainer, { autoAlpha: 0, duration: 0.5, ease: "Power1.easeInOut" }, "-=0.2");
+    .to(loadingWords, { opacity: 0, yPercent: -75, duration: 0.8, ease: "Expo.easeIn" })
+    .to(loadingContainer, { autoAlpha: 0, duration: 0.6, ease: "Power1.easeInOut" }, "-=0.2");
 
   loadingContainer.style.display = "none";
   if (hasLenis && lenis) lenis.start();
