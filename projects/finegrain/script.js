@@ -38,6 +38,7 @@ function initOnceFunctions() {
   // Runs once on first load
   // if (has('[data-something]')) initSomething();
   if (document.querySelector('[form-open]')) initFormModal();
+  if (document.querySelector('[data-form-validate]')) initSuperformValidation();
 }
 
 function initBeforeEnterFunctions(next) {
@@ -525,6 +526,91 @@ function initFormModal() {
       if (text) text.style.color = "white";
     });
   });
+}
+
+// -----------------------------------------
+// SUPERFORM STEP VALIDATION (visual labeling)
+// -----------------------------------------
+// Superform already BLOCKS advancing when a step has invalid fields — it just
+// does it silently. This layer adds the visual feedback: it marks each field's
+// wrapper with is--filled / is--error / is--success and focuses the first
+// invalid field whenever the user clicks a "Next" (forward sf-goto) or Submit.
+// Rules mirror Superform's (required + native type), so the two stay in sync.
+//
+// Webflow markup contract (add these in the Designer for this to take effect):
+//   • [data-form-validate] on the form/step container (the same [sf] element).
+//   • [data-validate]      on each field wrapper (e.g. .text_wrap_from).
+//   • Optional icons inside a wrapper: .form-field-icon.is--error /
+//     .form-field-icon.is--success (toggled via the wrapper's state class).
+function initSuperformValidation() {
+  const form = document.querySelector('[data-form-validate]');
+  if (!form) return;
+
+  const isEmail = (v) => /\S+@\S+\.\S+/.test(v);
+
+  const validateField = (field) => {
+    const parent = field.closest('[data-validate]');
+    if (!parent) return true; // no wrapper to label — skip silently
+
+    const value     = field.value.trim();
+    const type      = (field.getAttribute('type') || field.tagName).toLowerCase();
+    const required  = field.hasAttribute('required');
+    const minLength = parseInt(field.getAttribute('minlength') || field.getAttribute('min'), 10);
+    const maxLength = parseInt(field.getAttribute('maxlength') || field.getAttribute('max'), 10);
+
+    let isValid = true;
+    if (required && value === '') isValid = false;
+    if (value !== '') {
+      if (!isNaN(minLength) && value.length < minLength) isValid = false;
+      if (!isNaN(maxLength) && value.length > maxLength) isValid = false;
+      if (type === 'email' && !isEmail(value)) isValid = false;
+    }
+
+    parent.classList.toggle('is--filled', value !== '');
+    parent.classList.toggle('is--error', !isValid);
+    parent.classList.toggle('is--success', isValid && value !== '');
+    return isValid;
+  };
+
+  // Live re-validation, only switched on once a field has been checked
+  // (so untouched fields don't flash red before the user tries to advance).
+  const liveBound = new WeakSet();
+  const startLive = (field) => {
+    if (liveBound.has(field)) return;
+    liveBound.add(field);
+    field.addEventListener('input', () => validateField(field));
+  };
+
+  const validateStep = (stepEl) => {
+    let firstInvalid = null;
+    stepEl
+      .querySelectorAll('[data-validate] input, [data-validate] select, [data-validate] textarea')
+      .forEach((field) => {
+        const ok = validateField(field);
+        if (!ok && !firstInvalid) firstInvalid = field;
+        startLive(field);
+      });
+    if (firstInvalid) firstInvalid.focus();
+  };
+
+  const bindTrigger = (el) => {
+    el.addEventListener('click', () => {
+      const step = el.closest('[sf-step]');
+      if (step) validateStep(step);
+    });
+  };
+
+  // Forward navigation buttons (skip back / prev / -N)
+  form.querySelectorAll('[sf-goto]').forEach((btn) => {
+    const target = (btn.getAttribute('sf-goto') || '').toLowerCase();
+    const isBack =
+      target === 'back' || target === 'prev' || target === 'previous' || target.startsWith('-');
+    if (!isBack) bindTrigger(btn);
+  });
+
+  // Final submit
+  const submit = form.querySelector('input[type="submit"]');
+  if (submit) bindTrigger(submit);
 }
 
 function initFadeScaleSlideshows(scope = document) {
