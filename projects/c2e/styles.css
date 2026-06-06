@@ -1,0 +1,39 @@
+/* ============================================
+   Template Styles — Quaglio Scripts
+   Deploy via Vercel CDN → use in Webflow
+   ============================================ */
+
+:root {
+  --color-primary: #000000;
+  --color-secondary: #ffffff;
+  --font-base: 'Inter', sans-serif;
+  --spacing-base: 16px;
+}
+
+/* Add your component styles below */
+/* Overlay background */.form-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  .form-overlay.is-open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .form-container {
+    width: 480px;
+    max-width: 100vw;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.45s cubic-bezier(0.77, 0, 0.18, 1);
+  }
+
+  .form-container.is-open {
+    transform: translateX(0);
+  }
