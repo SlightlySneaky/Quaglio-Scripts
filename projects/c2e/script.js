@@ -30,7 +30,7 @@ gsap.ticker.lagSmoothing(0);
 document.addEventListener('DOMContentLoaded', () => {
   if (document.querySelector('[data-example]'))        initExample();
   if (document.querySelector('[data-reveal]'))         initReveal();
-  if (document.querySelector('[data-reveal-clip]'))    initRevealClip();
+  if (document.querySelector('[data-reveal-fade]'))    initRevealClip();
   if (document.querySelector('.img:not(.no-para)'))    initImageParallax();
   if (document.querySelector('[form-open]'))           initFormModal();
   if (document.querySelector('[data-form-validate]'))  initSuperformValidation();
