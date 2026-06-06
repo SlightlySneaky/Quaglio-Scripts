@@ -546,6 +546,15 @@ function initSuperformValidation() {
   const form = document.querySelector('[data-form-validate]');
   if (!form) return;
 
+  // Superform STRIPS the native `required` attribute when it initialises (it
+  // tracks required-ness internally and silently blocks the step, but leaves no
+  // marker on the field). This script runs before Superform inits, so snapshot
+  // required-ness now into data-sf-required while the attribute still exists —
+  // otherwise we'd never know which empty fields to flag.
+  form.querySelectorAll('input, select, textarea').forEach((f) => {
+    if (f.hasAttribute('required')) f.dataset.sfRequired = 'true';
+  });
+
   const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
   // Validate one [data-validate] group. Handles three shapes:
@@ -578,7 +587,7 @@ function initSuperformValidation() {
     const value    = field.value.trim();
     const tag      = field.tagName.toLowerCase();
     const type     = (field.getAttribute('type') || tag).toLowerCase();
-    const required = field.hasAttribute('required');
+    const required = field.hasAttribute('required') || field.dataset.sfRequired === 'true';
     const minLen   = parseInt(field.getAttribute('minlength') || field.getAttribute('min'), 10);
     const maxLen   = parseInt(field.getAttribute('maxlength') || field.getAttribute('max'), 10);
     const pattern  = field.getAttribute('pattern'); // native HTML pattern, e.g. phone
@@ -629,24 +638,26 @@ function initSuperformValidation() {
     if (firstInvalid) firstInvalid.focus();
   };
 
-  const bindTrigger = (el) => {
-    el.addEventListener('click', () => {
-      const step = el.closest('[sf-step]');
-      if (step) validateStep(step);
-    });
+  // Delegated on the document in the CAPTURE phase: Superform adds/rewrites its
+  // own sf-goto buttons after we init (4 → 7 on this form), so binding to each
+  // node directly is unreliable. Capture also guarantees we run before
+  // Superform's own click handler. We only label — Superform stays the gate.
+  const isForward = (el) => {
+    const t = (el.getAttribute('sf-goto') || '').toLowerCase();
+    return !(t === 'back' || t === 'prev' || t === 'previous' || t.startsWith('-'));
   };
 
-  // Forward navigation buttons (skip back / prev / -N)
-  form.querySelectorAll('[sf-goto]').forEach((btn) => {
-    const target = (btn.getAttribute('sf-goto') || '').toLowerCase();
-    const isBack =
-      target === 'back' || target === 'prev' || target === 'previous' || target.startsWith('-');
-    if (!isBack) bindTrigger(btn);
-  });
-
-  // Final submit
-  const submit = form.querySelector('input[type="submit"]');
-  if (submit) bindTrigger(submit);
+  document.addEventListener('click', (e) => {
+    const trigger =
+      e.target.closest('[sf-goto]') || e.target.closest('input[type="submit"]');
+    if (!trigger || !form.contains(trigger)) return;
+    if (trigger.hasAttribute('sf-goto') && !isForward(trigger)) return; // back/prev
+    const step = trigger.closest('[sf-step]');
+    // Superform synchronously re-renders the step on a goto click, wiping any
+    // classes we set during the click. Apply ours on the next frame, after that
+    // render has run, so the error/success states survive.
+    if (step) requestAnimationFrame(() => validateStep(step));
+  }, true);
 }
 
 function initFadeScaleSlideshows(scope = document) {
