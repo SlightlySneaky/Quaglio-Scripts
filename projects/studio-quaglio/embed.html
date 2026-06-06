@@ -1,79 +1,46 @@
 <!-- ============================================================
-     Studio Quaglio — Webflow embed.
+     Studio Quaglio — Webflow embed (single source while testing).
 
-     Staging  (.webflow.io)  → loads script.js       (live working file, always fresh)
-     Production (custom domain) → loads script.prod.js (frozen snapshot)
+     Every domain (.webflow.io AND the custom domain) loads script.js directly —
+     no staging/prod split, no gsap polling, no console banner. Just the critical
+     preloader paint + the script.
 
-     - Waits for GSAP + plugins before injecting script.js (script.js calls
-       gsap.* on its first line), so placement (head or footer) is irrelevant.
-     - Logs a STAGING / PRODUCTION banner via a hidden-iframe console, because
-       the site's head code replaces window.console.* with no-ops. The iframe
-       console is untouched, so the banner always shows.
-
-     To make production silent later: delete the `else { ... }` PRODUCTION
-     log block (staging banner can stay).
-
-     Deploy:
-       push-staging                push edits → updates STAGING only
-       push-prod studio-quaglio    snapshot script.js → script.prod.js → LIVE
+     Placement:
+       • Put this whole block in the page/site <head> so the white preloader
+         paints on the very first frame.
+       • GSAP + its plugins (ScrollTrigger, Observer, CustomEase, SplitText) and
+         Barba must load ABOVE the script.js tag — script.js registers them on
+         its first line and calls barba.init immediately. Easiest: load those
+         libraries in the head above this, or move the script.js tag to the end
+         of <body> (after the libraries and the page markup).
      ============================================================ -->
+
+<!-- Paint the WHITE preloader from the very first frame, before script.js loads
+     and runs the word animation — no flash. Scoped to `sq-preload`, which
+     script.js removes the instant the preloader finishes (so the page's own
+     backgrounds take over afterwards and Barba navigations never get stuck). -->
+<script>document.documentElement.classList.add('sq-preload');</script>
+<style>
+  html.sq-preload { background-color: #fff; }
+  html.sq-preload [data-loading-container] {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fff;
+    opacity: 1;
+    visibility: visible;
+  }
+</style>
+
+<!-- Quaglio Scripts -->
+<script src="https://quaglio-scripts.vercel.app/projects/studio-quaglio/script.js"></script>
+
+<!-- Safety: release the preload paint even if script.js never loads/runs. -->
 <script>
-(function () {
-  var BASE = 'https://quaglio-scripts.vercel.app/projects/studio-quaglio';
-  // .webflow.io (and Designer preview) = staging; custom domain = production
-  var staging = /\.webflow\.io$/.test(location.hostname);
-  var file = staging ? 'script.js' : 'script.prod.js';
-  // No cache-buster: Vercel serves these with `max-age=0, must-revalidate`, so the
-  // browser already revalidates every load. A `?t=` param triggered ad blockers
-  // (ERR_BLOCKED_BY_CLIENT), so it is intentionally omitted.
-
-  // Staging logs a banner; production stays silent (and does no console work at all).
-  // The site disables window.console.*, so on staging we borrow a clean console
-  // from a hidden iframe.
-  if (staging) {
-    var log = (function () {
-      try {
-        var f = document.createElement('iframe');
-        f.style.display = 'none';
-        (document.body || document.head || document.documentElement).appendChild(f);
-        var con = f.contentWindow.console;          // fresh, un-patched console
-        if (con && typeof con.log === 'function') return con.log.bind(con);
-      } catch (e) {}
-      return (window.console && window.console.log)
-        ? window.console.log.bind(window.console)
-        : function () {};
-    })();
-
-    log('%c STAGING %c Studio Quaglio — testing mode (' + file + ')',
-      'background:#e67e22;color:#fff;font-weight:700;padding:2px 6px;border-radius:3px',
-      'color:#e67e22;font-weight:600');
-  }
-
-  function inject() {
-    var s = document.createElement('script');
-    s.src = BASE + '/' + file;
-    document.head.appendChild(s);
-  }
-
-  // The scripts register GSAP plugins on their first lines, so wait for those.
-  // We deliberately do NOT wait for Barba: the script self-detects Barba and
-  // runs with or without it, so gating on Barba here would needlessly stall any
-  // page that doesn't load it.
-  function ready() {
-    return window.gsap && window.ScrollTrigger && window.Observer && window.CustomEase;
-  }
-
-  if (ready()) {
-    inject();
-  } else {
-    var waited = 0;
-    var iv = setInterval(function () {
-      waited += 50;
-      if (ready() || waited >= 10000) {  // give up after 10s and try anyway
-        clearInterval(iv);
-        inject();
-      }
-    }, 50);
-  }
-})();
+  setTimeout(function () {
+    document.documentElement.classList.remove('sq-preload');
+  }, 12000);
 </script>

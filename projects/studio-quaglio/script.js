@@ -42,6 +42,13 @@ function markPageReady() {
   if (_markPageReady) { _markPageReady(); _markPageReady = null; }
 }
 
+// Release the critical black "preload paint" (added by the embed's inline CSS as
+// the `sq-preload` class on <html>). Called once the preloader is done or when
+// there's no preloader on the page, so the page's own backgrounds take over.
+function endPreloadPaint() {
+  document.documentElement.classList.remove("sq-preload");
+}
+
 // Safety net: never let the overlay hang if something in the boot chain throws.
 window.addEventListener("load", () => setTimeout(markPageReady, 2000), { once: true });
 
@@ -557,11 +564,11 @@ function initBarbaNavUpdate(data) {
 // the words finish, so this adds no extra wait — the animation just completes.
 async function initWelcomingWordsLoader() {
   const loadingContainer = document.querySelector('[data-loading-container]');
-  if (!loadingContainer) { markPageReady(); return; } // no loader on this page
+  if (!loadingContainer) { endPreloadPaint(); markPageReady(); return; } // no loader on this page
 
   const loadingWords = loadingContainer.querySelector('[data-loading-words]');
   const wordsTarget  = loadingWords && loadingWords.querySelector('[data-loading-words-target]');
-  if (!loadingWords || !wordsTarget) { markPageReady(); return; }
+  if (!loadingWords || !wordsTarget) { endPreloadPaint(); markPageReady(); return; }
 
   const words = (loadingWords.getAttribute('data-loading-words') || '')
     .split(',').map((w) => w.trim()).filter(Boolean);
@@ -574,6 +581,7 @@ async function initWelcomingWordsLoader() {
     wordsTarget.textContent = words[words.length - 1] || wordsTarget.textContent;
     await pageReady;
     gsap.set(loadingContainer, { autoAlpha: 0, display: "none" });
+    endPreloadPaint();
     if (hasLenis && lenis) lenis.start();
     settleScrollTriggers();
     return;
@@ -598,6 +606,7 @@ async function initWelcomingWordsLoader() {
     .to(loadingContainer, { autoAlpha: 0, duration: 0.6, ease: "Power1.easeInOut" }, "-=0.2");
 
   loadingContainer.style.display = "none";
+  endPreloadPaint();
   if (hasLenis && lenis) lenis.start();
 
   // The page is now fully laid out, fonts/images loaded, scroll re-enabled.
