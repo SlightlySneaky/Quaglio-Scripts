@@ -78,8 +78,8 @@ function initReveal() {
 
 // REVEAL CLIP — fade up from blur + opacity (no clip-path) //
 function initRevealClip() {
-  document.querySelectorAll('[data-reveal-clip]').forEach((el) => {
-    const delay = parseFloat(el.getAttribute('data-reveal-clip-delay')) || 0;
+  document.querySelectorAll('[data-reveal-fade]').forEach((el) => {
+    const delay = parseFloat(el.getAttribute('data-reveal-fade-delay')) || 0;
 
     gsap.set(el, { autoAlpha: 0, y: '2em', filter: 'blur(12px)', willChange: 'transform, filter, opacity' });
 
