@@ -29,6 +29,7 @@ gsap.ticker.lagSmoothing(0);
 
 document.addEventListener('DOMContentLoaded', () => {
   if (document.querySelector('[data-example]'))        initExample();
+  if (document.querySelector('[preload-bg]'))          initPreload();
   if (document.querySelector('[data-reveal]'))         initReveal();
   if (document.querySelector('[data-reveal-fade]'))    initRevealClip();
   if (document.querySelector('.img:not(.no-para)'))    initImageParallax();
@@ -130,6 +131,13 @@ function initMenuButton() {
   });
 }
 
+// Shared "reveal-in" tween — the visible end state every reveal animates to.
+// Spread it into a tween and add stagger/scrollTrigger as needed.
+const REVEAL_IN = { autoAlpha: 1, y: 0, filter: 'blur(0px)', duration: 1, ease: 'osmo' };
+
+// How slightly each nested [data-reveal] trails the previous inside a fade-clip.
+const REVEAL_STEP = 0.15;
+
 // Prep a [data-reveal] element: split it, set the hidden start state, and return
 // the split targets + per-type stagger so the caller can tween them standalone
 // or sequenced inside a parent timeline.
@@ -150,21 +158,37 @@ function prepReveal(el) {
   return { targets, stagger };
 }
 
+// Prep a [data-reveal-fade] element: set the parent's hidden start state and prep
+// its nested [data-reveal] children so they sit hidden until their turn. Returns
+// { el, children } for revealFade() to cascade.
+function prepRevealFade(el) {
+  gsap.set(el, { autoAlpha: 0, y: '1rem', filter: 'blur(12px)', willChange: 'transform, filter, opacity' });
+  const children = [...el.querySelectorAll('[data-reveal]')].map(prepReveal);
+  return { el, children };
+}
+
+// Cascade a prepped fade-clip onto a timeline: parent first, then each nested
+// [data-reveal] child staggered just slightly after the previous.
+function revealFade(tl, { el, children }, position) {
+  tl.to(el, { ...REVEAL_IN }, position);
+  children.forEach(({ targets, stagger }) => {
+    tl.to(targets, { ...REVEAL_IN, stagger: { each: stagger, from: 'start' } }, `<${REVEAL_STEP}`);
+  });
+}
+
 // REVEAL — blur + opacity fade-in, split & staggered (lines by default; chars/words/lines via attr value) //
 function initReveal() {
   document.querySelectorAll('[data-reveal]').forEach((el) => {
     // Children of a [data-reveal-fade] are sequenced by their parent — skip here.
     if (el.closest('[data-reveal-fade]')) return;
+    // Above-the-fold elements owned by the preload reveal as the cover lifts — skip here.
+    if (el.dataset.preloaded) return;
 
     const delay = parseFloat(el.getAttribute('data-reveal-delay')) || 0;
     const { targets, stagger } = prepReveal(el);
 
     gsap.to(targets, {
-      autoAlpha: 1,
-      y: 0,
-      filter: 'blur(0px)',
-      duration: 1,
-      ease: 'osmo',
+      ...REVEAL_IN,
       delay,
       stagger: { each: stagger, from: 'start' },
       scrollTrigger: { trigger: el, start: 'top 85%', toggleActions: 'play none none none' }
@@ -174,41 +198,68 @@ function initReveal() {
 
 // REVEAL CLIP — fade up from blur + opacity, then cascade any nested [data-reveal] children //
 function initRevealClip() {
-  const STEP = 0.15; // how slightly each nested reveal trails the previous
-
   document.querySelectorAll('[data-reveal-fade]').forEach((el) => {
+    // Above-the-fold elements owned by the preload reveal as the cover lifts — skip here.
+    if (el.dataset.preloaded) return;
+
     const delay = parseFloat(el.getAttribute('data-reveal-fade-delay')) || 0;
-
-    // Prep nested [data-reveal] children up front so they sit hidden until their turn.
-    const children = [...el.querySelectorAll('[data-reveal]')].map(prepReveal);
-
-    gsap.set(el, { autoAlpha: 0, y: '1rem', filter: 'blur(12px)', willChange: 'transform, filter, opacity' });
+    const prepped = prepRevealFade(el);
 
     const tl = gsap.timeline({
       delay,
       scrollTrigger: { trigger: el, start: 'top 90%', toggleActions: 'play none none none' }
     });
 
-    tl.to(el, {
-      autoAlpha: 1,
-      y: 0,
-      filter: 'blur(0px)',
-      duration: 1,
-      ease: 'osmo'
+    revealFade(tl, prepped);
+  });
+}
+
+// PRELOAD — wipe the [preload-bg] cover (height 100% → 0%); at the 50% midpoint,
+// reveal the hero [data-reveal] / [data-reveal-fade] content in data-load order
+// (1..n), each starting just after the previous. Below-the-fold content stays on
+// ScrollTrigger. //
+function initPreload() {
+  const bg = document.querySelector('[preload-bg]');
+  if (!bg) return;
+
+  const COVER_DURATION = 1.2;
+  const LOAD_STEP = 0.15; // each hero element starts just after the previous
+
+  // Hero elements declare their load order via data-load ("1".."6"). Collect the
+  // reveal elements, sort by that order, and flag them so initReveal /
+  // initRevealClip skip them (no double-firing behind the cover).
+  const heroPreps = [...document.querySelectorAll('[data-load]')]
+    .filter((el) => {
+      if (el.hasAttribute('data-reveal-fade')) return true;
+      if (el.hasAttribute('data-reveal'))      return !el.closest('[data-reveal-fade]');
+      return false;
+    })
+    .sort((a, b) => (parseFloat(a.dataset.load) || 0) - (parseFloat(b.dataset.load) || 0))
+    .map((el) => {
+      el.dataset.preloaded = 'true';
+      return el.hasAttribute('data-reveal-fade')
+        ? { type: 'fade',   prepped: prepRevealFade(el) }
+        : { type: 'reveal', prepped: prepReveal(el) };
     });
 
-    // Parent first, then each child staggered just slightly after the previous.
-    children.forEach(({ targets, stagger }) => {
-      tl.to(targets, {
-        autoAlpha: 1,
-        y: 0,
-        filter: 'blur(0px)',
-        duration: 1,
-        ease: 'osmo',
-        stagger: { each: stagger, from: 'start' }
-      }, `<${STEP}`);
-    });
+  // Sequence the hero reveals — first at the start, each next just after the previous.
+  const revealTl = gsap.timeline();
+  heroPreps.forEach(({ type, prepped }, i) => {
+    const position = i === 0 ? 0 : `<${LOAD_STEP}`;
+    if (type === 'fade') {
+      revealFade(revealTl, prepped, position);
+    } else {
+      const { targets, stagger } = prepped;
+      revealTl.to(targets, { ...REVEAL_IN, stagger: { each: stagger, from: 'start' } }, position);
+    }
   });
+
+  gsap.set(bg, { height: '100%' });
+
+  const tl = gsap.timeline();
+  tl.to(bg, { height: '0%', duration: COVER_DURATION, ease: 'osmo' });
+  // Play the hero sequence from the cover's midpoint onward.
+  tl.add(revealTl, COVER_DURATION * 0.5);
 }
 
 // IMAGE PARALLAX — every .img drifts down ~15%, scrubbed both ways. Skip .no-para //
