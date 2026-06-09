@@ -94,6 +94,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-accordion-css-init]'))           initAccordionCSS();
   if (has('[data-draggable-marquee-init]'))       initDraggableMarquee();
   if (has('[data-cal-inline]'))                   initCalEmbeds(nextPage);
+  if (has('[data-scroll-next-wrap]'))             initScrollToNextPage();
 
 
   // Colorflow is faded in by the page transition (runPageLeaveAnimation), not here,
@@ -1150,6 +1151,68 @@ function initCalEmbeds(scope) {
     });
     Cal.ns[namespace]("ui", { hideEventTypeDetails: false, layout: layout });
   });
+}
+
+
+// ============================================
+// SCROLL TO NEXT PAGE
+// ============================================
+// Scrubbed SVG line-draw tied to scroll; when the path finishes drawing it
+// clicks [data-scroll-next-link] to navigate (Barba handles the transition).
+// Runs per page via the Barba lifecycle — afterLeave kills its ScrollTrigger and
+// afterEnter rebuilds it — so it must NOT be bound to a one-time DOMContentLoaded.
+function initScrollToNextPage() {
+  if (!window.gsap || !window.ScrollTrigger) return;
+  gsap.registerPlugin(ScrollTrigger);
+
+  const wrap = document.querySelector("[data-scroll-next-wrap]");
+  if (!wrap) return;
+
+  const link = wrap.querySelector("[data-scroll-next-link]");
+  const path = wrap.querySelector("[data-scroll-next-path]");
+  const bg = wrap.querySelector("[data-scroll-next-bg]");
+  const overlay = wrap.querySelector("[data-scroll-next-overlay]");
+
+  if (!link || !path) return;
+
+  // ScrollTrigger start/end (overridable per element)
+  const start = wrap.getAttribute("data-scroll-start") || "top top";
+  const end = wrap.getAttribute("data-scroll-end") || "bottom bottom";
+
+  // Prep SVG path for the line-draw animation
+  const pathLength = path.getTotalLength();
+
+  gsap.set(path, {
+    strokeDasharray: pathLength,
+    strokeDashoffset: pathLength,
+  });
+
+  const tl = gsap.timeline({
+    defaults: { ease: "none" },
+    scrollTrigger: {
+      trigger: wrap,
+      start,
+      end,
+      scrub: true,
+    },
+  });
+
+  tl.to(path, {
+    strokeDashoffset: 0,
+    onComplete: () => {
+      link.click();
+    }
+  });
+
+  // Optional bg scale
+  if (bg) {
+    tl.to(bg, { scale: 1.2 }, 0);
+  }
+
+  // Optional dark overlay animation
+  if (overlay) {
+    tl.to(overlay, { opacity: 0.5 }, 0);
+  }
 }
 
 
