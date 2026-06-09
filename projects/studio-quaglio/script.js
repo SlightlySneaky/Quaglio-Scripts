@@ -529,10 +529,16 @@ function initLenis() {
 function resetPage(container){
   window.scrollTo(0, 0);
   gsap.set(container, { clearProps: "position,top,left,right" });
-  
+
   if(hasLenis){
     lenis.resize();
-    lenis.start();    
+    lenis.start();
+    // window.scrollTo doesn't reset Lenis's internal/target scroll, so after
+    // navigating (e.g. from the bottom of a page via scroll-to-next) Lenis can
+    // keep the previous page's high scroll value. That leaves scroll-triggers
+    // mapped near the bottom of the new page — so a tiny scroll completes the
+    // scroll-to-next and bounces you back to the top. Force Lenis back to 0.
+    lenis.scrollTo(0, { immediate: true, force: true });
   }
 }
 
