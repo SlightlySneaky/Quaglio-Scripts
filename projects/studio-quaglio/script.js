@@ -60,6 +60,7 @@ function initOnceFunctions() {
 
   // Runs once on first load
   if (has('[data-button-animate-chars]'))   initButtonCharacterStagger();
+  initColorflowPrewarm(); // hover-prewarm colorflow before navigation (binds once)
 }
 
 function initBeforeEnterFunctions(next) {
@@ -380,26 +381,17 @@ function prepareForTransition(parent, current, next){
 // -----------------------------------------
 
 barba.hooks.before(data => {
-  // Preload colorflow as early as possible so WebGL has the full transition to initialise.
+  // Fallback preload at transition start, in case a hover didn't prewarm it first
+  // (e.g. keyboard nav, or a click without a preceding hover). initColorflowPrewarm
+  // sets colorflowPreloadIframe earlier on intent — skip if it's already warming.
+  if (colorflowPreloadIframe) return;
+
   // opacity:0 (not display:none) lets the GPU actually create the WebGL context.
   const parser = new DOMParser();
   const nextDoc = parser.parseFromString(data.next.html, 'text/html');
   const nextColorflow = nextDoc.querySelector('iframe[src*="colorflow"]');
 
-  if (nextColorflow) {
-    colorflowPreloadIframe = document.createElement('iframe');
-    colorflowPreloadIframe.src = nextColorflow.src;
-    Object.assign(colorflowPreloadIframe.style, {
-      position: 'fixed',
-      inset: '0',
-      width: '100%',
-      height: '100%',
-      opacity: '0',
-      pointerEvents: 'none',
-      zIndex: '-1',
-    });
-    document.body.appendChild(colorflowPreloadIframe);
-  }
+  if (nextColorflow) colorflowPreloadIframe = warmColorflow(nextColorflow.src);
 });
 
 barba.hooks.beforeEnter(data => {
@@ -580,6 +572,71 @@ function initBarbaNavUpdate(data) {
     var newClassList = next.getAttribute('class') || '';
     curr.setAttribute('class', newClassList);
   });
+}
+
+// Create a hidden, full-screen iframe pointing at a colorflow URL so the browser
+// loads its bundle and the GPU builds the WebGL context ahead of time. opacity:0
+// (not display:none) is required — display:none won't initialise WebGL. Returns
+// the iframe so callers can track/remove it (afterEnter cleans up the active one).
+function warmColorflow(src) {
+  if (!src) return null;
+  const iframe = document.createElement('iframe');
+  iframe.src = src;
+  iframe.setAttribute('aria-hidden', 'true');
+  Object.assign(iframe.style, {
+    position: 'fixed',
+    inset: '0',
+    width: '100%',
+    height: '100%',
+    opacity: '0',
+    pointerEvents: 'none',
+    zIndex: '-1',
+  });
+  document.body.appendChild(iframe);
+  return iframe;
+}
+
+// Prewarm the colorflow BEFORE the page change: as soon as the user hovers (or
+// touches) an internal link, fetch that page's HTML and, if it contains a
+// colorflow iframe (e.g. the home page), start warming it — so by the time they
+// click and land, its WebGL is already initialising. The barba `before` hook is
+// the fallback for when there's no hover. Bound once on the document.
+function initColorflowPrewarm() {
+  if (window.__cfPrewarmBound) return;
+  window.__cfPrewarmBound = true;
+
+  const htmlCache = new Map(); // url -> Promise<string|null>, deduped per URL
+  const fetchHtml = (url) => {
+    if (!htmlCache.has(url)) {
+      htmlCache.set(url, fetch(url, { credentials: 'same-origin' })
+        .then((r) => (r.ok ? r.text() : null))
+        .catch(() => null));
+    }
+    return htmlCache.get(url);
+  };
+
+  const onIntent = async (e) => {
+    if (colorflowPreloadIframe) return; // already warming one — don't stack
+    const a = e.target.closest && e.target.closest('a[href]');
+    if (!a) return;
+
+    const href = a.getAttribute('href');
+    if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+
+    let url;
+    try { url = new URL(href, location.href); } catch { return; }
+    if (url.origin !== location.origin) return;        // same-origin only
+    if (url.pathname === location.pathname) return;     // not the current page
+
+    const html = await fetchHtml(url.href);
+    if (!html || colorflowPreloadIframe) return;        // re-check: a click may have warmed it
+
+    const match = html.match(/<iframe[^>]+src=["']([^"']*colorflow[^"']*)["']/i);
+    if (match) colorflowPreloadIframe = warmColorflow(match[1]);
+  };
+
+  document.addEventListener('pointerover', onIntent, { passive: true });
+  document.addEventListener('touchstart', onIntent, { passive: true });
 }
 
 
