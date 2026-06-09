@@ -1187,6 +1187,17 @@ function initScrollToNextPage() {
     strokeDashoffset: pathLength,
   });
 
+  // Guard the navigation. With scrub, the tween's onComplete fires whenever
+  // progress reaches 1 — INCLUDING during ScrollTrigger.refresh(), which Barba
+  // runs on every page enter. Because we arrive at this page scrolled to the
+  // bottom of the previous one, the new trigger can momentarily measure progress
+  // as 1 before the scroll resets, firing link.click() mid-transition (the flash
+  // + snap-to-top). So we only navigate once the user has genuinely scrubbed
+  // through the range (armed = we've seen progress below the end after settling)
+  // and only on a real forward scroll — never from a refresh snap.
+  let armed = false;
+  let navigated = false;
+
   const tl = gsap.timeline({
     defaults: { ease: "none" },
     scrollTrigger: {
@@ -1194,12 +1205,17 @@ function initScrollToNextPage() {
       start,
       end,
       scrub: true,
+      invalidateOnRefresh: true,
+      onUpdate: (self) => { if (self.progress < 0.99) armed = true; },
     },
   });
 
   tl.to(path, {
     strokeDashoffset: 0,
     onComplete: () => {
+      const st = tl.scrollTrigger;
+      if (navigated || !armed || (st && st.direction !== 1)) return;
+      navigated = true;
       link.click();
     }
   });
