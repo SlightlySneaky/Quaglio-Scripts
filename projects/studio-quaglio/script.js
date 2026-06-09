@@ -93,6 +93,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-swiper-group="2"]'))             initSwiperSlider();
   if (has('[data-accordion-css-init]'))           initAccordionCSS();
   if (has('[data-draggable-marquee-init]'))       initDraggableMarquee();
+  if (has('[data-cal-inline]'))                   initCalEmbeds(nextPage);
 
 
   // Colorflow is faded in by the page transition (runPageLeaveAnimation), not here,
@@ -1080,6 +1081,74 @@ function initAccordionCSS() {
         });
       }
     });
+  });
+}
+
+
+// ============================================
+// CAL.COM INLINE EMBEDS (Barba-safe)
+// ============================================
+// Cal's official snippet runs as an inline <script> inside the page body, but
+// Barba swaps page HTML via fetch and does NOT re-execute inline scripts — so on
+// every navigation the calendar container arrives empty and "breaks". This moves
+// the init into the Barba lifecycle (afterEnter + first load), rebuilding any Cal
+// embeds in the incoming page right at the start of every page, once per element.
+//
+// Webflow markup contract — replace the per-page inline embed with a plain div:
+//   <div data-cal-inline
+//        data-cal-link="studioquaglio/diagnosis-call"
+//        data-cal-namespace="diagnosis-call"
+//        style="width:100%;height:100%;overflow:scroll"></div>
+// (data-cal-namespace + data-cal-layout are optional; namespace defaults to the
+//  cal-link, layout to "month_view".)
+function initCalEmbeds(scope) {
+  const root = scope || document;
+  const containers = root.querySelectorAll('[data-cal-inline]');
+  if (!containers.length) return;
+
+  // Cal bootstrap — defines window.Cal and lazy-loads embed.js. Persists across
+  // Barba navigations, so it only needs to run once for the whole session. Kept
+  // here (not in the page) so it exists even when the first page has no embed.
+  if (!window.Cal) {
+    (function (C, A, L) {
+      let p = function (a, ar) { a.q.push(ar); };
+      let d = C.document;
+      C.Cal = C.Cal || function () {
+        let cal = C.Cal; let ar = arguments;
+        if (!cal.loaded) { cal.ns = {}; cal.q = cal.q || []; d.head.appendChild(d.createElement("script")).src = A; cal.loaded = true; }
+        if (ar[0] === L) {
+          const api = function () { p(api, arguments); };
+          const namespace = ar[1]; api.q = api.q || [];
+          if (typeof namespace === "string") { cal.ns[namespace] = cal.ns[namespace] || api; p(cal.ns[namespace], ar); p(cal, ["initNamespace", namespace]); }
+          else p(cal, ar);
+          return;
+        }
+        p(cal, ar);
+      };
+    })(window, "https://app.cal.com/embed/embed.js", "init");
+  }
+
+  containers.forEach((container) => {
+    if (container.__calInit) return; // already built this element
+    container.__calInit = true;
+
+    const calLink = container.getAttribute('data-cal-link');
+    if (!calLink) { console.warn('Cal embed: [data-cal-inline] is missing data-cal-link', container); return; }
+
+    const namespace = container.getAttribute('data-cal-namespace') || calLink;
+    const layout    = container.getAttribute('data-cal-layout') || 'month_view';
+
+    // Cal targets the embed by selector, so make sure each container has an id.
+    if (!container.id) container.id = 'cal-inline-' + Math.random().toString(36).slice(2);
+
+    // Build immediately so the calendar is ready at the start of the page.
+    Cal("init", namespace, { origin: "https://app.cal.com" });
+    Cal.ns[namespace]("inline", {
+      elementOrSelector: "#" + container.id,
+      config: { layout: layout, useSlotsViewOnSmallScreen: "true" },
+      calLink: calLink,
+    });
+    Cal.ns[namespace]("ui", { hideEventTypeDetails: false, layout: layout });
   });
 }
 
