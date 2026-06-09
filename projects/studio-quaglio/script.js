@@ -95,9 +95,8 @@ function initAfterEnterFunctions(next) {
   if (has('[data-draggable-marquee-init]'))       initDraggableMarquee();
 
 
-  // Reveal colorflow iframe now that WebGL has had the transition duration to initialise
-  const colorflowIframe = nextPage.querySelector('iframe[src*="colorflow"]');
-  if (colorflowIframe) colorflowIframe.style.opacity = '1';
+  // Colorflow is faded in by the page transition (runPageLeaveAnimation), not here,
+  // so it animates from 0 opacity instead of popping in after the transition.
 
   if(hasLenis){
     lenis.resize();
@@ -113,27 +112,26 @@ function initAfterEnterFunctions(next) {
 // PAGE TRANSITIONS
 // -----------------------------------------
 
-function runLoadAnimations(container) {
+// [data-load] LOAD ANIMATIONS
+// Split into prep (hide) + build (reveal) so a Barba navigation can hide the
+// incoming page's elements early — before the transition reveals them — and then
+// play the reveal timed to land just before the page transition completes. On
+// first load (no leave transition) the two run back-to-back via runLoadAnimations.
+
+// Hide every [data-load] element and stash how it should animate in. Mirrors the
+// scroll-path setups: split-heading → chars, split-body → lines, reveal-block →
+// clip-path; on mobile / no SplitText, split text reveals as one whole piece.
+function prepLoadAnimations(root) {
   const hasSplitText = typeof window.SplitText !== "undefined";
   if (hasSplitText) gsap.registerPlugin(SplitText);
 
-  const root = container || document;
-  const loadEls = Array.from(root.querySelectorAll("[data-load]"));
-  if (!loadEls.length) return gsap.timeline();
+  const canSplit = hasSplitText && splitTextEnabled();
+  const loadEls = Array.from((root || document).querySelectorAll("[data-load]"));
 
-  // Group elements by their data-load order value
-  const groups = {};
   loadEls.forEach(el => {
-    const order = parseInt(el.getAttribute("data-load"), 10) || 0;
-    if (!groups[order]) groups[order] = [];
-    groups[order].push(el);
-  });
+    el._loadOrder = parseInt(el.getAttribute("data-load"), 10) || 0;
 
-  const sortedOrders = Object.keys(groups).map(Number).sort((a, b) => a - b);
-
-  // Set initial hidden states immediately so elements aren't visible before animation
-  loadEls.forEach(el => {
-    if (hasSplitText && splitTextEnabled() && el.hasAttribute("split-heading")) {
+    if (el.hasAttribute("split-heading") && canSplit) {
       const split = new SplitText(el, {
         type: "chars,words",
         mask: "chars",
@@ -143,43 +141,64 @@ function runLoadAnimations(container) {
       });
       gsap.set(el, { overflow: "hidden", position: "relative", autoAlpha: 1 });
       gsap.set(split.chars, { yPercent: 120, autoAlpha: 0 });
-      el._loadSplit = split;
-    } else if (el.hasAttribute("split-heading")) {
-      // Mobile / no SplitText: reveal the whole heading as one piece.
+      el._loadAnim = { kind: "chars", split };
+    } else if (el.hasAttribute("split-body") && canSplit) {
+      const split = new SplitText(el, {
+        type: "lines",
+        mask: "lines",
+        maskClass: "line-mask",
+        linesClass: "is-split-line"
+      });
+      gsap.set(el, { overflow: "hidden", position: "relative", autoAlpha: 1 });
+      gsap.set(split.lines, { yPercent: 120, autoAlpha: 0 });
+      el._loadAnim = { kind: "lines", split };
+    } else if (el.hasAttribute("split-heading") || el.hasAttribute("split-body")) {
+      // Mobile / no SplitText: reveal the whole text block as one piece.
       gsap.set(el, { autoAlpha: 0, yPercent: 20 });
+      el._loadAnim = { kind: "whole" };
     } else if (el.hasAttribute("reveal-block")) {
       gsap.set(el, { clipPath: "inset(0 100% 0 0)", willChange: "clip-path" });
+      el._loadAnim = { kind: "reveal-block" };
     }
   });
 
+  return loadEls;
+}
+
+// Build the reveal timeline from the prepped elements, grouped + ordered by their
+// data-load value (same order animates together; groups play in sequence).
+function buildLoadAnimationsTimeline(root) {
   const masterTl = gsap.timeline();
 
-  sortedOrders.forEach(order => {
+  const loadEls = Array.from((root || document).querySelectorAll("[data-load]"))
+    .filter(el => el._loadAnim);
+  if (!loadEls.length) return masterTl;
+
+  const groups = {};
+  loadEls.forEach(el => {
+    const order = el._loadOrder || 0;
+    (groups[order] = groups[order] || []).push(el);
+  });
+
+  Object.keys(groups).map(Number).sort((a, b) => a - b).forEach(order => {
     const groupTl = gsap.timeline();
 
     groups[order].forEach(el => {
-      if (el._loadSplit) {
-        groupTl.to(el._loadSplit.chars, {
-          yPercent: 0,
-          autoAlpha: 1,
-          duration: 0.8,
-          ease: "osmo",
+      const anim = el._loadAnim;
+      if (anim.kind === "chars") {
+        groupTl.to(anim.split.chars, {
+          yPercent: 0, autoAlpha: 1, duration: 0.8, ease: "osmo",
           stagger: { each: 0.01, from: "start" }
         }, 0);
-      } else if (el.hasAttribute("split-heading")) {
-        // Mobile / no SplitText: animate the whole heading in.
-        groupTl.to(el, {
-          autoAlpha: 1,
-          yPercent: 0,
-          duration: 0.8,
-          ease: "osmo"
+      } else if (anim.kind === "lines") {
+        groupTl.to(anim.split.lines, {
+          yPercent: 0, autoAlpha: 1, duration: 0.9, ease: "osmo",
+          stagger: { each: 0.08, from: "start" }
         }, 0);
-      } else if (el.hasAttribute("reveal-block")) {
-        groupTl.to(el, {
-          clipPath: "inset(0 0% 0 0)",
-          duration: 1,
-          ease: "osmo"
-        }, 0);
+      } else if (anim.kind === "whole") {
+        groupTl.to(el, { autoAlpha: 1, yPercent: 0, duration: 0.8, ease: "osmo" }, 0);
+      } else if (anim.kind === "reveal-block") {
+        groupTl.to(el, { clipPath: "inset(0 0% 0 0)", duration: 1, ease: "osmo" }, 0);
       }
     });
 
@@ -187,6 +206,12 @@ function runLoadAnimations(container) {
   });
 
   return masterTl;
+}
+
+// First load: no leave transition to time against, so hide + reveal back-to-back.
+function runLoadAnimations(container) {
+  prepLoadAnimations(container);
+  return buildLoadAnimationsTimeline(container);
 }
 
 function runPageOnceAnimation(next) {
@@ -208,19 +233,34 @@ function runPageLeaveAnimation(current, next) {
   
   // Helper function to prepare transition structure
   const { wrapper } = prepareForTransition(parent, current, next);
-  
+
+  // The colorflow background is held at opacity 0 while WebGL initialises
+  // (see initBeforeEnterFunctions) — we fade it in as the new page arrives.
+  const nextColorflow = next.querySelector('iframe[src*="colorflow"]');
+
   const tl = gsap.timeline({
     onComplete: () => {
       wrapper.replaceWith(next);
       gsap.set(next, {clearProps: "all" });
     }
   });
-  
+
   if (reducedMotion) {
     // Immediate swap behavior if user prefers reduced motion
+    if (nextColorflow) gsap.set(nextColorflow, { opacity: 1 });
     return tl.set(current, { autoAlpha: 0 });
   }
-  
+
+  // Hide the incoming page's [data-load] elements now (before the wrapper opens
+  // and reveals them), so they can animate in cleanly as the transition lands.
+  prepLoadAnimations(next);
+
+  // Fade the colorflow background in FIRST, from 0 opacity, so it leads the new
+  // page (rather than snapping in from a placeholder) before the content loads.
+  if (nextColorflow) {
+    tl.to(nextColorflow, { opacity: 1, duration: 0.6, ease: "osmo" }, 0);
+  }
+
   tl.set(transitionWrap, {
     zIndex: 2
   });
@@ -251,7 +291,12 @@ function runPageLeaveAnimation(current, next) {
   tl.set(transitionDark, {
     autoAlpha: 0,
   });
-  
+
+  // Launch the incoming page's [data-load] reveal just before the transition
+  // completes. Fired from a callback (not added to the timeline) so it can finish
+  // after the wrapper is swapped out without delaying the transition's onComplete.
+  tl.call(() => buildLoadAnimationsTimeline(next), null, "-=0.3");
+
   return tl;
 }
 
