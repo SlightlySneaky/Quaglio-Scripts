@@ -1176,10 +1176,8 @@ function initCalEmbeds(scope) {
 // Runs per page via the Barba lifecycle — afterLeave kills its ScrollTrigger and
 // afterEnter rebuilds it — so it must NOT be bound to a one-time DOMContentLoaded.
 function initScrollToNextPage() {
-  if (!window.gsap || !window.ScrollTrigger) return;
-  gsap.registerPlugin(ScrollTrigger);
-
   const wrap = document.querySelector("[data-scroll-next-wrap]");
+
   if (!wrap) return;
 
   const link = wrap.querySelector("[data-scroll-next-link]");
@@ -1189,11 +1187,11 @@ function initScrollToNextPage() {
 
   if (!link || !path) return;
 
-  // ScrollTrigger start/end (overridable per element)
+  // ScrollTrigger defaults
   const start = wrap.getAttribute("data-scroll-start") || "top top";
   const end = wrap.getAttribute("data-scroll-end") || "bottom bottom";
 
-  // Prep SVG path for the line-draw animation
+  // Prep SVG path for line draw animation
   const pathLength = path.getTotalLength();
 
   gsap.set(path, {
@@ -1201,35 +1199,21 @@ function initScrollToNextPage() {
     strokeDashoffset: pathLength,
   });
 
-  // Guard the navigation. With scrub, the tween's onComplete fires whenever
-  // progress reaches 1 — INCLUDING during ScrollTrigger.refresh(), which Barba
-  // runs on every page enter. Because we arrive at this page scrolled to the
-  // bottom of the previous one, the new trigger can momentarily measure progress
-  // as 1 before the scroll resets, firing link.click() mid-transition (the flash
-  // + snap-to-top). So we only navigate once the user has genuinely scrubbed
-  // through the range (armed = we've seen progress below the end after settling)
-  // and only on a real forward scroll — never from a refresh snap.
-  let armed = false;
-  let navigated = false;
-
   const tl = gsap.timeline({
-    defaults: { ease: "none" },
+    defaults: {
+      ease: "none",
+    },
     scrollTrigger: {
       trigger: wrap,
       start,
       end,
       scrub: true,
-      invalidateOnRefresh: true,
-      onUpdate: (self) => { if (self.progress < 0.99) armed = true; },
     },
   });
 
   tl.to(path, {
     strokeDashoffset: 0,
     onComplete: () => {
-      const st = tl.scrollTrigger;
-      if (navigated || !armed || (st && st.direction !== 1)) return;
-      navigated = true;
       link.click();
     }
   });
@@ -1239,10 +1223,11 @@ function initScrollToNextPage() {
     tl.to(bg, { scale: 1.2 }, 0);
   }
 
-  // Optional dark overlay animation
+ // Optional dark overlay animation
   if (overlay) {
     tl.to(overlay, { opacity: 0.5 }, 0);
   }
+
 }
 
 
