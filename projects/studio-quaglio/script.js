@@ -714,6 +714,9 @@ function initSplitTextAndReveal() {
   }
 
   function setupHeading(heading) {
+    // [data-load] = animate on page load / transition only (handled by
+    // prepLoadAnimations). Never attach a ScrollTrigger to these.
+    if (heading.hasAttribute("data-load")) return;
     if (!hasSplitText || !splitTextEnabled()) { setupWhole(heading, "clamp(top 80%)"); return; }
 
     const delayAttr  = parseFloat(heading.getAttribute("data-split-delay")) || 0;
@@ -753,6 +756,9 @@ function initSplitTextAndReveal() {
   }
 
   function setupBody(body) {
+    // [data-load] = animate on page load / transition only (handled by
+    // prepLoadAnimations). Never attach a ScrollTrigger to these.
+    if (body.hasAttribute("data-load")) return;
     if (!hasSplitText || !splitTextEnabled()) { setupWhole(body, "clamp(top 85%)"); return; }
 
     const delayAttr  = parseFloat(body.getAttribute("data-split-delay")) || 0.1;
