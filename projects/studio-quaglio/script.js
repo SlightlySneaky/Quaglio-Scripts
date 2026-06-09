@@ -107,6 +107,10 @@ function initAfterEnterFunctions(next) {
 
   if (hasScrollTrigger) {
     ScrollTrigger.refresh();
+    // Images in the new container load after this refresh and change heights —
+    // re-measure once they're in so scroll-triggers aren't left on a stale,
+    // too-short layout (which makes scroll-to-next fire on the first scroll).
+    refreshOnImages(nextPage);
   }
 }
 
@@ -637,6 +641,28 @@ function settleScrollTriggers() {
   requestAnimationFrame(() => {
     if (hasLenis && lenis) lenis.resize();
     ScrollTrigger.refresh();
+  });
+}
+
+// Barba doesn't fire window 'load' on navigation, so the incoming page's images
+// load AFTER afterEnter's refresh and grow section heights. That leaves
+// ScrollTriggers (e.g. scroll-to-next) measured against a shorter, image-less
+// layout — so their start sits too high and they can fire on the first scroll.
+// Re-refresh once the new container's images are actually in.
+function refreshOnImages(scope) {
+  if (!hasScrollTrigger) return;
+  const imgs = Array.from((scope || document).querySelectorAll('img'));
+  const pending = imgs.filter((img) => !img.complete);
+  const settle = () => {
+    if (hasLenis && lenis) lenis.resize();
+    ScrollTrigger.refresh();
+  };
+  if (!pending.length) { settle(); return; }
+  let left = pending.length;
+  const done = () => { if (--left <= 0) settle(); };
+  pending.forEach((img) => {
+    img.addEventListener('load', done, { once: true });
+    img.addEventListener('error', done, { once: true });
   });
 }
 
