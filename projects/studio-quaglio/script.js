@@ -97,8 +97,9 @@ function initAfterEnterFunctions(next) {
   if (has('[data-scroll-next-wrap]'))             initScrollToNextPage();
 
 
-  // Colorflow is faded in by the page transition (runPageLeaveAnimation), not here,
-  // so it animates from 0 opacity instead of popping in after the transition.
+  // Colorflow is faded in by the page-enter animations (runPageOnceAnimation on
+  // first load, runPageLeaveAnimation on navigation), not here — so it animates
+  // from 0 opacity during the transition instead of popping in afterward.
 
   if(hasLenis){
     lenis.resize();
@@ -223,6 +224,12 @@ function runPageOnceAnimation(next) {
     resetPage(next)
   }, null, 0);
 
+  // Fade the colorflow background in from 0 opacity on first load (mirrors the
+  // navigation reveal in runPageLeaveAnimation). Self-contained fromTo so it
+  // shows regardless of whether anything pre-hid it.
+  const colorflow = next.querySelector('iframe[src*="colorflow"]');
+  if (colorflow) tl.fromTo(colorflow, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "osmo" }, 0);
+
   tl.add(runLoadAnimations(next));
 
   return tl;
@@ -259,8 +266,9 @@ function runPageLeaveAnimation(current, next) {
 
   // Fade the colorflow background in FIRST, from 0 opacity, so it leads the new
   // page (rather than snapping in from a placeholder) before the content loads.
+  // Self-contained fromTo so the reveal never depends on a separate hide step.
   if (nextColorflow) {
-    tl.to(nextColorflow, { opacity: 1, duration: 0.6, ease: "osmo" }, 0);
+    tl.fromTo(nextColorflow, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "osmo" }, 0);
   }
 
   tl.set(transitionWrap, {
