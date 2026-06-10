@@ -595,6 +595,15 @@ function initFormModal() {
   const showWrap = () => gsap.set(wrap, { autoAlpha: 1, pointerEvents: "auto" });
   const hideWrap = () => gsap.set(wrap, { autoAlpha: 0, pointerEvents: "none" });
   const fadeBg   = (to) => { if (bg) gsap.to(bg, { autoAlpha: to, duration: 0.4, ease: "power2.out" }); };
+  // Lock page scroll while the overlay is open. lenis.stop() adds the
+  // .lenis-stopped class, and the loaded lenis.css applies overflow:hidden — so
+  // this locks scrolling on touch devices too. Any internally-scrollable panel
+  // should carry [data-lenis-prevent] to keep scrolling inside it.
+  const lockScroll = (lock) => {
+    if (!lenis) return;
+    if (lock) lenis.stop();
+    else lenis.start();
+  };
   // Report "is the overlay open" (any panel), NOT "is the menu shown". This way
   // a menu → contact swap keeps the hamburger in its open state — clicking a
   // [form-open] inside the menu won't re-flip the bars/labels. It only resets
@@ -606,6 +615,7 @@ function initFormModal() {
     if (!incoming || shown === name) return;
     showWrap();
     fadeBg(1);
+    lockScroll(true);
 
     if (shown && shown !== name) {
       // Swap: clip the current panel's width to 0, then wipe the new one in.
@@ -624,6 +634,7 @@ function initFormModal() {
     const current = panelOf(shown);
     shown = null;
     notifyOverlay();
+    lockScroll(false);
     gsap.to(current, {
       clipPath: CLIP_HIDDEN,
       duration: 0.45,
