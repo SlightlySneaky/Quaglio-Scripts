@@ -10,8 +10,9 @@ let lenis = null;
 let nextPage = document;
 let onceFunctionsInitialized = false;
 
-// Set up by initNavThemeSwitch each page; lets the hamburger force a nav theme
-// while the menu is open and hand control back to the scroll position on close.
+// Built once by initNavTheme and persists across Barba navigations (the nav is
+// outside the container). Lets the hamburger/form force a nav theme while open
+// and hand control back to the scroll position on close.
 let navThemeController = null;
 
 // initFormModal owns the [form-wrap] overlay (contact + menu panels) and exposes
@@ -48,6 +49,7 @@ function initOnceFunctions() {
 
   // Runs once on first load
   // if (has('[data-something]')) initSomething();
+  initNavTheme(); // persistent nav-theme applier (survives Barba)
   if (document.querySelector('[data-underlay-nav-toggle]')) initMenuToggle();
   if (document.querySelector('[form-wrap]')) initFormModal();
   if (document.querySelector('[data-form-validate]')) initSuperformValidation();
@@ -71,7 +73,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-hero-parallax]')) initHeroParallax();
   if (has('[data-slideshow="wrap"]')) initFadeScaleSlideshows();
   if (has('.team-item')) initTeamHover();
-  initNavThemeSwitch(); // always — sets up navThemeController for the hamburger
+  initNavSectionTriggers(); // recreate section triggers for this page's sections
 
   if (hasLenis) {
     lenis.resize();
@@ -959,32 +961,29 @@ function initTeamHover() {
 }
 
 // -----------------------------------------
-// NAV THEME SWITCH (scroll-driven)
+// NAV THEME — persistent applier
 // -----------------------------------------
-// As each section scrolls behind the fixed nav, recolour the nav to stay
-// legible against it. Sections opt in with one attribute:
-//   • [section-dark]  → white nav text, [nav-logo] left as-is (invert 0)
-//   • [section-light] → black nav text, [nav-logo] inverted (invert 1)
-// The active section is whichever one currently sits under the nav line; the
-// nav holds its last theme across any gaps (sections with neither attribute).
-function initNavThemeSwitch() {
-  navThemeController = null;
-  if (!hasScrollTrigger) return;
+// The nav lives OUTSIDE the Barba container, so it persists across pages. This
+// applier (and its lock state) must persist with it — so it's built ONCE. Per
+// page, initNavSectionTriggers() recreates the scroll triggers that drive it.
+//   • theme "dark"  → white nav text, [nav-logo] left as-is (invert 0)
+//   • theme "light" → black nav text, [nav-logo] inverted (invert 1)
+// While locked (menu/form overlay open), scroll updates are recorded but not
+// applied, so the nav stays forced to the locked theme regardless of section.
+function initNavTheme() {
+  if (navThemeController) return; // already built — survives Barba navigations
 
   const navWrap = document.querySelector('[nav-wrap]');
   if (!navWrap) return;
   // There can be more than one logo (e.g. a desktop + a mobile [nav-logo]);
   // invert them all so whichever is visible stays in sync.
   const navLogos = navWrap.querySelectorAll('[nav-logo]');
-
-  // Ensure the logos have a filter GSAP can tween from (invert(0) = untouched).
   if (navLogos.length) gsap.set(navLogos, { filter: 'invert(0)' });
 
   let appliedTheme = null; // what the nav is currently showing
   let scrollTheme  = null; // what the scroll position wants (latest section)
-  let locked       = false; // true while the menu forces a theme
+  let locked       = false; // true while the menu/form overlay forces a theme
 
-  // The actual visual change. Guarded so we skip redundant tweens.
   const animateTo = (theme) => {
     if (theme === appliedTheme) return;
     appliedTheme = theme;
@@ -1007,15 +1006,43 @@ function initNavThemeSwitch() {
     }
   };
 
-  // Scroll-driven updates record the desired theme but defer to the menu lock.
-  const applyTheme = (theme) => {
-    scrollTheme = theme;
-    if (!locked) animateTo(theme);
+  navThemeController = {
+    // Scroll-driven updates record the desired theme but defer to the lock.
+    applyTheme(theme) {
+      scrollTheme = theme;
+      if (!locked) animateTo(theme);
+    },
+    // Force a theme while the overlay is open. appliedTheme is reset so the
+    // tween always runs, even if Barba/CSS left the nav looking "already there".
+    lock(theme) {
+      locked = true;
+      appliedTheme = null;
+      animateTo(theme);
+    },
+    // Hand control back to whatever the scroll position wants now.
+    unlock() {
+      locked = false;
+      appliedTheme = null;
+      if (scrollTheme) animateTo(scrollTheme);
+    },
+    isLocked: () => locked,
   };
+}
+
+// -----------------------------------------
+// NAV THEME — per-page scroll triggers
+// -----------------------------------------
+// Recreated on every Barba enter (afterLeave kills the old ones). Each section
+// drives the persistent applier as it passes under the nav line.
+function initNavSectionTriggers() {
+  initNavTheme(); // ensure the persistent applier exists
+  if (!navThemeController || !hasScrollTrigger) return;
+
+  const navWrap = document.querySelector('[nav-wrap]');
+  if (!navWrap) return;
 
   // Fire the switch when a section reaches the vertical middle of the nav, so
-  // the colour flips as the section visually meets the nav rather than the very
-  // top of the viewport.
+  // the colour flips as the section visually meets the nav.
   const navOffset = Math.round(navWrap.getBoundingClientRect().height / 2) || 0;
 
   const sections = document.querySelectorAll('[section-dark], [section-light]');
@@ -1027,40 +1054,21 @@ function initNavThemeSwitch() {
       start: `top top+=${navOffset}`,
       end: `bottom top+=${navOffset}`,
       onToggle: (self) => {
-        if (self.isActive) applyTheme(themeOf(section));
+        if (self.isActive) navThemeController.applyTheme(themeOf(section));
       },
     });
   });
 
-  // On (re)init — including a Barba page change, which resets scroll to the top
-  // — set the nav to whichever section already sits under the nav line, instead
-  // of waiting for a scroll to fire a toggle. Runs on the next frame so the new
-  // container's layout (and scroll reset) is settled before we measure.
+  // On each page change (scroll resets to top) set the nav to whichever section
+  // already sits under the nav line, without waiting for a scroll. Next frame so
+  // the new container's layout is settled before we measure.
   gsap.delayedCall(0, () => {
     let active = null;
     sections.forEach((section) => {
       const r = section.getBoundingClientRect();
       if (r.top <= navOffset && r.bottom > navOffset) active = section;
     });
-    if (active) applyTheme(themeOf(active));
+    if (active) navThemeController.applyTheme(themeOf(active));
   });
-
-  // Exposed to the hamburger: lock the nav to a theme while the menu is open,
-  // then unlock to restore whatever the scroll position now wants.
-  let preLockTheme = null;
-  navThemeController = {
-    lock(theme) {
-      if (locked) return;
-      preLockTheme = appliedTheme;
-      locked = true;
-      animateTo(theme);
-    },
-    unlock() {
-      if (!locked) return;
-      locked = false;
-      const restore = scrollTheme || preLockTheme;
-      if (restore) animateTo(restore);
-    },
-  };
 }
 
