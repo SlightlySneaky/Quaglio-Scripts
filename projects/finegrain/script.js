@@ -161,6 +161,13 @@ function runPageEnterAnimation(next) {
 // BARBA HOOKS + INIT
 // -----------------------------------------
 
+barba.hooks.beforeLeave(() => {
+  // The form overlay (menu/contact) lives outside the Barba container, so it
+  // persists across pages. If a link is clicked while it's open, play its close
+  // animation (which also resets the hamburger) as the transition starts.
+  if (formPanels) formPanels.close();
+});
+
 barba.hooks.beforeEnter(data => {
   // Position new container on top
   gsap.set(data.next.container, {
