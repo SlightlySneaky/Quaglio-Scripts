@@ -14,6 +14,12 @@ let onceFunctionsInitialized = false;
 // while the menu is open and hand control back to the scroll position on close.
 let navThemeController = null;
 
+// initFormModal owns the [form-wrap] overlay (contact + menu panels) and exposes
+// it here; initMenuToggle exposes menuIconSync so the overlay can keep the
+// hamburger icon honest when it takes the menu over (e.g. a [form-open] swap).
+let formPanels = null;
+let menuIconSync = null;
+
 const hasLenis = typeof window.Lenis !== "undefined";
 const hasScrollTrigger = typeof window.ScrollTrigger !== "undefined";
 
@@ -43,7 +49,7 @@ function initOnceFunctions() {
   // Runs once on first load
   // if (has('[data-something]')) initSomething();
   if (document.querySelector('[data-underlay-nav-toggle]')) initMenuToggle();
-  if (document.querySelector('[form-open]')) initFormModal();
+  if (document.querySelector('[form-wrap]')) initFormModal();
   if (document.querySelector('[data-form-validate]')) initSuperformValidation();
 }
 
@@ -488,10 +494,11 @@ function initHeroParallax() {
 // -----------------------------------------
 // HAMBURGER TOGGLE
 // -----------------------------------------
-// On click of [data-underlay-nav-toggle]: animates the two
-// [.underlay-nav__toggle-bar]s between a hamburger and an X, and flips the
-// [.underlay-nav__toggle-label]s (yPercent) to swap "menu" ⇄ "close".
-// Lives in the nav, so it inits once.
+// The hamburger ([data-underlay-nav-toggle]) opens the [form-inner-menu] panel.
+// Its icon is a *reflection* of whether that menu panel is showing, not its own
+// state — the form overlay calls menuIconSync() whenever the menu opens/closes,
+// including when a [form-open] click swaps menu → contact, so the icon and nav
+// theme always match what's on screen. Lives in the nav, so it inits once.
 function initMenuToggle() {
   const toggleBtn = document.querySelector("[data-underlay-nav-toggle]");
   if (!toggleBtn) return;
@@ -504,91 +511,117 @@ function initMenuToggle() {
   gsap.set(toggleBars, { y: 0, rotation: 0 });
   gsap.set(toggleLabels, { yPercent: 0 });
 
-  let isOpen = false;
+  let iconOpen = false;
 
-  toggleBtn.addEventListener("click", () => {
-    isOpen = !isOpen;
-    toggleBtn.setAttribute("aria-expanded", String(isOpen));
+  // Animate the icon + nav theme to match whether the menu panel is open.
+  const syncIcon = (open) => {
+    if (open === iconOpen) return;
+    iconOpen = open;
+    toggleBtn.setAttribute("aria-expanded", String(open));
 
-    if (isOpen) {
-      gsap.to(toggleBars[0], {
-        y: "0.25em",
-        rotation: 45,
-        duration: 0.35,
-        ease: "back.out(1.4)",
-        overwrite: "auto",
-      });
-      gsap.to(toggleBars[1], {
-        y: "-0.25em",
-        rotation: -45,
-        duration: 0.35,
-        ease: "back.out(1.4)",
-        overwrite: "auto",
-      });
-      gsap.to(toggleLabels, {
-        yPercent: -100,
-        duration: 0.4,
-        ease: "energy",
-        overwrite: "auto",
-      });
+    if (open) {
+      gsap.to(toggleBars[0], { y: "0.25em", rotation: 45, duration: 0.35, ease: "back.out(1.4)", overwrite: "auto" });
+      gsap.to(toggleBars[1], { y: "-0.25em", rotation: -45, duration: 0.35, ease: "back.out(1.4)", overwrite: "auto" });
+      gsap.to(toggleLabels, { yPercent: -100, duration: 0.4, ease: "energy", overwrite: "auto" });
       // Force the nav into the [section-light] look while the menu is open.
       navThemeController?.lock("light");
     } else {
-      gsap.to(toggleBars, {
-        y: 0,
-        rotation: 0,
-        duration: 0.25,
-        ease: "power3.in",
-        overwrite: "auto",
-      });
-      gsap.to(toggleLabels, {
-        yPercent: 0,
-        duration: 0.25,
-        ease: "power3.in",
-        overwrite: "auto",
-      });
+      gsap.to(toggleBars, { y: 0, rotation: 0, duration: 0.25, ease: "power3.in", overwrite: "auto" });
+      gsap.to(toggleLabels, { yPercent: 0, duration: 0.25, ease: "power3.in", overwrite: "auto" });
       // Hand the nav back to whatever the scroll position wants.
       navThemeController?.unlock();
     }
+  };
+
+  // Exposed so the form overlay can keep this icon honest when it changes the
+  // menu panel's state without a direct hamburger click.
+  menuIconSync = syncIcon;
+
+  toggleBtn.addEventListener("click", () => {
+    if (formPanels) formPanels.toggleMenu();
+    else syncIcon(!iconOpen); // no form overlay on the page — at least move the icon
   });
 }
 
-// Form modal ([form-open] / [form-wrap]) — ported from inquiry-atelier
+// -----------------------------------------
+// FORM OVERLAY ([form-wrap]) — contact + menu panels
+// -----------------------------------------
+// One overlay, two stacked panels, each revealed with a clip-path width wipe
+// (0% → 100%):
+//   • [form-inner-contact] — the contact form, opened by any [form-open] click.
+//   • [form-inner-menu]    — the nav menu, opened by the hamburger toggle.
+// Opening one while the other shows clips the current panel's width to 0, then
+// wipes the new one in. So menu-open → [form-open] collapses the menu and wipes
+// the contact form in.
 function initFormModal() {
-  const openers = document.querySelectorAll("[form-open]");
-  const wrap    = document.querySelector("[form-wrap]");
+  const wrap = document.querySelector("[form-wrap]");
   if (!wrap) return;
 
-  const inner   = wrap.querySelector("[form-inner]");
+  const contact = wrap.querySelector("[form-inner-contact]");
+  const menu    = wrap.querySelector("[form-inner-menu]");
   const bg      = wrap.querySelector("[form-bg]");
   const closers = wrap.querySelectorAll("[form-close]");
-  if (!inner) { console.error("❌ Form modal: [form-inner] not found inside [form-wrap]"); return; }
-  if (!bg)    { console.error("❌ Form modal: [form-bg] not found inside [form-wrap]"); return; }
+  const openers = document.querySelectorAll("[form-open]");
+  if (!contact) { console.error("❌ Form overlay: [form-inner-contact] not found inside [form-wrap]"); return; }
 
-  gsap.set(wrap,  { display: "flex", autoAlpha: 0, pointerEvents: "none" });
-  gsap.set(bg,    { autoAlpha: 0 });
-  gsap.set(inner, { x: "100%" });
+  const CLIP_HIDDEN = "inset(0% 100% 0% 0%)"; // width 0, anchored to the left
+  const CLIP_SHOWN  = "inset(0% 0% 0% 0%)";   // full width
+  const panels = [contact, menu].filter(Boolean);
 
-  function openForm() {
-    gsap.set(wrap, { autoAlpha: 1, pointerEvents: "auto" });
-    const tl = gsap.timeline();
-    tl.to(bg, { autoAlpha: 1, duration: 0.5, ease: "power2.out" }, 0)
-      .to(inner, { x: "0%", duration: 0.65, ease: "power3.out" }, "-=0.15");
+  gsap.set(wrap, { display: "flex", autoAlpha: 0, pointerEvents: "none" });
+  if (bg) gsap.set(bg, { autoAlpha: 0 });
+  gsap.set(panels, { clipPath: CLIP_HIDDEN });
+
+  let shown = null; // 'contact' | 'menu' | null
+
+  const panelOf  = (name) => (name === "menu" ? menu : contact);
+  const showWrap = () => gsap.set(wrap, { autoAlpha: 1, pointerEvents: "auto" });
+  const hideWrap = () => gsap.set(wrap, { autoAlpha: 0, pointerEvents: "none" });
+  const fadeBg   = (to) => { if (bg) gsap.to(bg, { autoAlpha: to, duration: 0.4, ease: "power2.out" }); };
+  const notifyMenu = () => { if (menuIconSync) menuIconSync(shown === "menu"); };
+
+  function show(name) {
+    const incoming = panelOf(name);
+    if (!incoming || shown === name) return;
+    showWrap();
+    fadeBg(1);
+
+    if (shown && shown !== name) {
+      // Swap: clip the current panel's width to 0, then wipe the new one in.
+      gsap.to(panelOf(shown), { clipPath: CLIP_HIDDEN, duration: 0.45, ease: "power3.in" });
+      gsap.fromTo(incoming, { clipPath: CLIP_HIDDEN }, { clipPath: CLIP_SHOWN, duration: 0.6, ease: "power3.out", delay: 0.3 });
+    } else {
+      gsap.fromTo(incoming, { clipPath: CLIP_HIDDEN }, { clipPath: CLIP_SHOWN, duration: 0.6, ease: "power3.out" });
+    }
+
+    shown = name;
+    notifyMenu();
   }
 
-  function closeForm() {
-    const tl = gsap.timeline({
-      onComplete: () => gsap.set(wrap, { autoAlpha: 0, pointerEvents: "none" }),
+  function close() {
+    if (!shown) return;
+    const current = panelOf(shown);
+    shown = null;
+    notifyMenu();
+    gsap.to(current, {
+      clipPath: CLIP_HIDDEN,
+      duration: 0.45,
+      ease: "power3.in",
+      onComplete: () => { if (!shown) hideWrap(); }, // guard against a quick re-open
     });
-    tl.to(inner, { x: "100%", duration: 0.5, ease: "power3.in" }, 0)
-      .to(bg, { autoAlpha: 0, duration: 0.4, ease: "power2.in" }, 0.1);
+    fadeBg(0);
   }
 
-  openers.forEach((el) => el.addEventListener("click", openForm));
-  closers.forEach((el) => el.addEventListener("click", closeForm));
-  bg.addEventListener("click", closeForm);
+  function toggleMenu() {
+    if (shown === "menu") close();
+    else show("menu");
+  }
 
-  // Highlight the selected radio's label
+  openers.forEach((el) => el.addEventListener("click", () => show("contact")));
+  closers.forEach((el) => el.addEventListener("click", close));
+  if (bg) bg.addEventListener("click", close);
+
+  // Highlight the selected radio's label (contact form)
   wrap.querySelectorAll('input[type="radio"]').forEach((radio) => {
     radio.addEventListener("change", () => {
       wrap
@@ -601,6 +634,15 @@ function initFormModal() {
       if (text) text.style.color = "white";
     });
   });
+
+  // Exposed so the hamburger can open/close/toggle the menu panel.
+  formPanels = {
+    openContact: () => show("contact"),
+    openMenu: () => show("menu"),
+    toggleMenu,
+    close,
+    isMenuShown: () => shown === "menu",
+  };
 }
 
 // -----------------------------------------
