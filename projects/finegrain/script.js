@@ -24,6 +24,7 @@ let staggerDefault = 0.05;
 let durationDefault = 0.6;
 
 CustomEase.create("osmo", "M0,0 C0.625,0.05 0,1 1,1");
+CustomEase.create("energy", "M0,0 C0.32,0.72 0,1 1,1");
 gsap.defaults({ ease: "osmo", duration: durationDefault });
 
 // -----------------------------------------
@@ -483,8 +484,10 @@ function initHeroParallax() {
 // -----------------------------------------
 // HAMBURGER TOGGLE
 // -----------------------------------------
-// Animates the two [.underlay-nav__toggle-bar]s inside [data-underlay-nav-toggle]
-// between a hamburger and an X on click. Lives in the nav, so it inits once.
+// On click of [data-underlay-nav-toggle]: animates the two
+// [.underlay-nav__toggle-bar]s between a hamburger and an X, and flips the
+// [.underlay-nav__toggle-label]s (yPercent) to swap "menu" ⇄ "close".
+// Lives in the nav, so it inits once.
 function initMenuToggle() {
   const toggleBtn = document.querySelector("[data-underlay-nav-toggle]");
   if (!toggleBtn) return;
@@ -492,7 +495,10 @@ function initMenuToggle() {
   const toggleBars = toggleBtn.querySelectorAll(".underlay-nav__toggle-bar");
   if (toggleBars.length < 2) return;
 
+  const toggleLabels = toggleBtn.querySelectorAll(".underlay-nav__toggle-label");
+
   gsap.set(toggleBars, { y: 0, rotation: 0 });
+  gsap.set(toggleLabels, { yPercent: 0 });
 
   let isOpen = false;
 
@@ -515,10 +521,22 @@ function initMenuToggle() {
         ease: "back.out(1.4)",
         overwrite: "auto",
       });
+      gsap.to(toggleLabels, {
+        yPercent: -100,
+        duration: 0.4,
+        ease: "energy",
+        overwrite: "auto",
+      });
     } else {
       gsap.to(toggleBars, {
         y: 0,
         rotation: 0,
+        duration: 0.25,
+        ease: "power3.in",
+        overwrite: "auto",
+      });
+      gsap.to(toggleLabels, {
+        yPercent: 0,
         duration: 0.25,
         ease: "power3.in",
         overwrite: "auto",
