@@ -37,6 +37,7 @@ function initOnceFunctions() {
 
   // Runs once on first load
   // if (has('[data-something]')) initSomething();
+  if (document.querySelector('[data-underlay-nav-toggle]')) initMenuToggle();
   if (document.querySelector('[form-open]')) initFormModal();
   if (document.querySelector('[data-form-validate]')) initSuperformValidation();
 }
@@ -479,6 +480,53 @@ function initHeroParallax() {
   });
 }
 
+// -----------------------------------------
+// HAMBURGER TOGGLE
+// -----------------------------------------
+// Animates the two [.underlay-nav__toggle-bar]s inside [data-underlay-nav-toggle]
+// between a hamburger and an X on click. Lives in the nav, so it inits once.
+function initMenuToggle() {
+  const toggleBtn = document.querySelector("[data-underlay-nav-toggle]");
+  if (!toggleBtn) return;
+
+  const toggleBars = toggleBtn.querySelectorAll(".underlay-nav__toggle-bar");
+  if (toggleBars.length < 2) return;
+
+  gsap.set(toggleBars, { y: 0, rotation: 0 });
+
+  let isOpen = false;
+
+  toggleBtn.addEventListener("click", () => {
+    isOpen = !isOpen;
+    toggleBtn.setAttribute("aria-expanded", String(isOpen));
+
+    if (isOpen) {
+      gsap.to(toggleBars[0], {
+        y: "0.25em",
+        rotation: 45,
+        duration: 0.35,
+        ease: "back.out(1.4)",
+        overwrite: "auto",
+      });
+      gsap.to(toggleBars[1], {
+        y: "-0.25em",
+        rotation: -45,
+        duration: 0.35,
+        ease: "back.out(1.4)",
+        overwrite: "auto",
+      });
+    } else {
+      gsap.to(toggleBars, {
+        y: 0,
+        rotation: 0,
+        duration: 0.25,
+        ease: "power3.in",
+        overwrite: "auto",
+      });
+    }
+  });
+}
+
 // Form modal ([form-open] / [form-wrap]) — ported from inquiry-atelier
 function initFormModal() {
   const openers = document.querySelectorAll("[form-open]");
@@ -854,17 +902,31 @@ function initNavThemeSwitch() {
   // top of the viewport.
   const navOffset = Math.round(navWrap.getBoundingClientRect().height / 2) || 0;
 
-  document.querySelectorAll('[section-dark], [section-light]').forEach((section) => {
-    const theme = section.hasAttribute('section-dark') ? 'dark' : 'light';
+  const sections = document.querySelectorAll('[section-dark], [section-light]');
+  const themeOf = (section) => (section.hasAttribute('section-dark') ? 'dark' : 'light');
 
+  sections.forEach((section) => {
     ScrollTrigger.create({
       trigger: section,
       start: `top top+=${navOffset}`,
       end: `bottom top+=${navOffset}`,
       onToggle: (self) => {
-        if (self.isActive) applyTheme(theme);
+        if (self.isActive) applyTheme(themeOf(section));
       },
     });
+  });
+
+  // On (re)init — including a Barba page change, which resets scroll to the top
+  // — set the nav to whichever section already sits under the nav line, instead
+  // of waiting for a scroll to fire a toggle. Runs on the next frame so the new
+  // container's layout (and scroll reset) is settled before we measure.
+  gsap.delayedCall(0, () => {
+    let active = null;
+    sections.forEach((section) => {
+      const r = section.getBoundingClientRect();
+      if (r.top <= navOffset && r.bottom > navOffset) active = section;
+    });
+    if (active) applyTheme(themeOf(active));
   });
 }
 
