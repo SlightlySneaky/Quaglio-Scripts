@@ -812,8 +812,8 @@ function initTeamHover() {
 // -----------------------------------------
 // As each section scrolls behind the fixed nav, recolour the nav to stay
 // legible against it. Sections opt in with one attribute:
-//   • [section-dark]  → white nav text, inverted [nav-logo]
-//   • [section-light] → black nav text, un-inverted [nav-logo]
+//   • [section-dark]  → white nav text, [nav-logo] left as-is (invert 0)
+//   • [section-light] → black nav text, [nav-logo] inverted (invert 1)
 // The active section is whichever one currently sits under the nav line; the
 // nav holds its last theme across any gaps (sections with neither attribute).
 function initNavThemeSwitch() {
@@ -841,7 +841,7 @@ function initNavThemeSwitch() {
 
     if (navLogo) {
       gsap.to(navLogo, {
-        filter: isDark ? 'invert(1)' : 'invert(0)',
+        filter: isDark ? 'invert(0)' : 'invert(1)',
         duration: 0.4,
         ease: 'power2.out',
         overwrite: 'auto',
