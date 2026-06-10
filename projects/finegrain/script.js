@@ -59,6 +59,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-hero-parallax]')) initHeroParallax();
   if (has('[data-slideshow="wrap"]')) initFadeScaleSlideshows();
   if (has('.team-item')) initTeamHover();
+  if (has('[section-dark]') || has('[section-light]')) initNavThemeSwitch();
 
   if (hasLenis) {
     lenis.resize();
@@ -803,6 +804,67 @@ function initTeamHover() {
 
     item.addEventListener("mouseenter", () => tl.play());
     item.addEventListener("mouseleave", () => tl.reverse());
+  });
+}
+
+// -----------------------------------------
+// NAV THEME SWITCH (scroll-driven)
+// -----------------------------------------
+// As each section scrolls behind the fixed nav, recolour the nav to stay
+// legible against it. Sections opt in with one attribute:
+//   • [section-dark]  → white nav text, inverted [nav-logo]
+//   • [section-light] → black nav text, un-inverted [nav-logo]
+// The active section is whichever one currently sits under the nav line; the
+// nav holds its last theme across any gaps (sections with neither attribute).
+function initNavThemeSwitch() {
+  if (!hasScrollTrigger) return;
+
+  const navWrap = document.querySelector('[nav-wrap]');
+  if (!navWrap) return;
+  const navLogo = navWrap.querySelector('[nav-logo]') || document.querySelector('[nav-logo]');
+
+  // Ensure the logo has a filter GSAP can tween from (invert(0) = untouched).
+  if (navLogo) gsap.set(navLogo, { filter: 'invert(0)' });
+
+  let currentTheme = null;
+  const applyTheme = (theme) => {
+    if (theme === currentTheme) return; // already there — skip redundant tweens
+    currentTheme = theme;
+    const isDark = theme === 'dark';
+
+    gsap.to(navWrap, {
+      color: isDark ? '#fff' : '#000',
+      duration: 0.4,
+      ease: 'power2.out',
+      overwrite: 'auto',
+    });
+
+    if (navLogo) {
+      gsap.to(navLogo, {
+        filter: isDark ? 'invert(1)' : 'invert(0)',
+        duration: 0.4,
+        ease: 'power2.out',
+        overwrite: 'auto',
+      });
+    }
+  };
+
+  // Fire the switch when a section reaches the vertical middle of the nav, so
+  // the colour flips as the section visually meets the nav rather than the very
+  // top of the viewport.
+  const navOffset = Math.round(navWrap.getBoundingClientRect().height / 2) || 0;
+
+  document.querySelectorAll('[section-dark], [section-light]').forEach((section) => {
+    const theme = section.hasAttribute('section-dark') ? 'dark' : 'light';
+
+    ScrollTrigger.create({
+      trigger: section,
+      start: `top top+=${navOffset}`,
+      end: `bottom top+=${navOffset}`,
+      onToggle: (self) => {
+        if (self.isActive) applyTheme(theme);
+      },
+    });
   });
 }
 
