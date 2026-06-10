@@ -494,52 +494,62 @@ function initHeroParallax() {
 // -----------------------------------------
 // HAMBURGER TOGGLE
 // -----------------------------------------
-// The hamburger ([data-underlay-nav-toggle]) opens the [form-inner-menu] panel.
-// Its icon is a *reflection* of whether that menu panel is showing, not its own
-// state — the form overlay calls menuIconSync() whenever the menu opens/closes,
-// including when a [form-open] click swaps menu → contact, so the icon and nav
-// theme always match what's on screen. Lives in the nav, so it inits once.
+// There can be MORE THAN ONE [data-underlay-nav-toggle] (e.g. the nav opener +
+// a close button inside [form-inner-menu]); each has its own bars + labels and
+// all are kept in sync. The icon is a *reflection* of whether the menu panel is
+// showing, not its own state — the form overlay calls menuIconSync() whenever
+// the menu opens/closes (including a [form-open] swap menu → contact), so every
+// toggle and the nav theme match what's on screen. Inits once.
 function initMenuToggle() {
-  const toggleBtn = document.querySelector("[data-underlay-nav-toggle]");
-  if (!toggleBtn) return;
-
-  const toggleBars = toggleBtn.querySelectorAll(".underlay-nav__toggle-bar");
-  if (toggleBars.length < 2) return;
-
-  const toggleLabels = toggleBtn.querySelectorAll(".underlay-nav__toggle-label");
-
-  gsap.set(toggleBars, { y: 0, rotation: 0 });
-  gsap.set(toggleLabels, { yPercent: 0 });
+  const buttons = [];
+  document.querySelectorAll("[data-underlay-nav-toggle]").forEach((btn) => {
+    const bars = btn.querySelectorAll(".underlay-nav__toggle-bar");
+    if (bars.length < 2) return;
+    const labels = btn.querySelectorAll(".underlay-nav__toggle-label");
+    gsap.set(bars, { y: 0, rotation: 0 });
+    gsap.set(labels, { yPercent: 0 });
+    buttons.push({ btn, bars, labels });
+  });
+  if (!buttons.length) return;
 
   let iconOpen = false;
 
-  // Animate the icon + nav theme to match whether the menu panel is open.
+  // Animate every toggle's icon + the nav theme to match the menu panel state.
   const syncIcon = (open) => {
     if (open === iconOpen) return;
     iconOpen = open;
-    toggleBtn.setAttribute("aria-expanded", String(open));
 
-    if (open) {
-      gsap.to(toggleBars[0], { y: "0.25em", rotation: 45, duration: 0.35, ease: "back.out(1.4)", overwrite: "auto" });
-      gsap.to(toggleBars[1], { y: "-0.25em", rotation: -45, duration: 0.35, ease: "back.out(1.4)", overwrite: "auto" });
-      gsap.to(toggleLabels, { yPercent: -100, duration: 0.4, ease: "energy", overwrite: "auto" });
-      // Force the nav into the [section-light] look while the menu is open.
-      navThemeController?.lock("light");
-    } else {
-      gsap.to(toggleBars, { y: 0, rotation: 0, duration: 0.25, ease: "power3.in", overwrite: "auto" });
-      gsap.to(toggleLabels, { yPercent: 0, duration: 0.25, ease: "power3.in", overwrite: "auto" });
-      // Hand the nav back to whatever the scroll position wants.
-      navThemeController?.unlock();
-    }
+    buttons.forEach(({ btn, bars, labels }) => {
+      btn.setAttribute("aria-expanded", String(open));
+      btn.setAttribute("aria-label", open ? "close menu" : "open menu");
+
+      if (open) {
+        gsap.to(bars[0], { y: "0.25em", rotation: 45, duration: 0.35, ease: "back.out(1.4)", overwrite: "auto" });
+        gsap.to(bars[1], { y: "-0.25em", rotation: -45, duration: 0.35, ease: "back.out(1.4)", overwrite: "auto" });
+        gsap.to(labels, { yPercent: -100, duration: 0.4, ease: "energy", overwrite: "auto" });
+      } else {
+        gsap.to(bars, { y: 0, rotation: 0, duration: 0.25, ease: "power3.in", overwrite: "auto" });
+        gsap.to(labels, { yPercent: 0, duration: 0.25, ease: "power3.in", overwrite: "auto" });
+      }
+    });
+
+    // Force the [section-light] look while open; hand back to scroll on close.
+    if (open) navThemeController?.lock("light");
+    else navThemeController?.unlock();
   };
 
-  // Exposed so the form overlay can keep this icon honest when it changes the
+  // Exposed so the form overlay can keep the icons honest when it changes the
   // menu panel's state without a direct hamburger click.
   menuIconSync = syncIcon;
 
-  toggleBtn.addEventListener("click", () => {
-    if (formPanels) formPanels.toggleMenu();
-    else syncIcon(!iconOpen); // no form overlay on the page — at least move the icon
+  buttons.forEach(({ btn }) => {
+    // A toggle inside [form-close] already closes via the overlay's close
+    // handler — binding it here too would close then instantly re-open.
+    if (btn.closest("[form-close]")) return;
+    btn.addEventListener("click", () => {
+      if (formPanels) formPanels.toggleMenu();
+      else syncIcon(!iconOpen); // no form overlay on the page — at least move the icon
+    });
   });
 }
 
@@ -578,7 +588,11 @@ function initFormModal() {
   const showWrap = () => gsap.set(wrap, { autoAlpha: 1, pointerEvents: "auto" });
   const hideWrap = () => gsap.set(wrap, { autoAlpha: 0, pointerEvents: "none" });
   const fadeBg   = (to) => { if (bg) gsap.to(bg, { autoAlpha: to, duration: 0.4, ease: "power2.out" }); };
-  const notifyMenu = () => { if (menuIconSync) menuIconSync(shown === "menu"); };
+  // Report "is the overlay open" (any panel), NOT "is the menu shown". This way
+  // a menu → contact swap keeps the hamburger in its open state — clicking a
+  // [form-open] inside the menu won't re-flip the bars/labels. It only resets
+  // when the whole overlay closes.
+  const notifyOverlay = () => { if (menuIconSync) menuIconSync(shown !== null); };
 
   function show(name) {
     const incoming = panelOf(name);
@@ -595,14 +609,14 @@ function initFormModal() {
     }
 
     shown = name;
-    notifyMenu();
+    notifyOverlay();
   }
 
   function close() {
     if (!shown) return;
     const current = panelOf(shown);
     shown = null;
-    notifyMenu();
+    notifyOverlay();
     gsap.to(current, {
       clipPath: CLIP_HIDDEN,
       duration: 0.45,
@@ -938,10 +952,12 @@ function initNavThemeSwitch() {
 
   const navWrap = document.querySelector('[nav-wrap]');
   if (!navWrap) return;
-  const navLogo = navWrap.querySelector('[nav-logo]') || document.querySelector('[nav-logo]');
+  // There can be more than one logo (e.g. a desktop + a mobile [nav-logo]);
+  // invert them all so whichever is visible stays in sync.
+  const navLogos = navWrap.querySelectorAll('[nav-logo]');
 
-  // Ensure the logo has a filter GSAP can tween from (invert(0) = untouched).
-  if (navLogo) gsap.set(navLogo, { filter: 'invert(0)' });
+  // Ensure the logos have a filter GSAP can tween from (invert(0) = untouched).
+  if (navLogos.length) gsap.set(navLogos, { filter: 'invert(0)' });
 
   let appliedTheme = null; // what the nav is currently showing
   let scrollTheme  = null; // what the scroll position wants (latest section)
@@ -960,8 +976,8 @@ function initNavThemeSwitch() {
       overwrite: 'auto',
     });
 
-    if (navLogo) {
-      gsap.to(navLogo, {
+    if (navLogos.length) {
+      gsap.to(navLogos, {
         filter: isDark ? 'invert(0)' : 'invert(1)',
         duration: 0.4,
         ease: 'power2.out',
