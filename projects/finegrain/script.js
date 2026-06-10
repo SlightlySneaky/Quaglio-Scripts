@@ -574,7 +574,7 @@ function initFormModal() {
   const openers = document.querySelectorAll("[form-open]");
   if (!contact) { console.error("❌ Form overlay: [form-inner-contact] not found inside [form-wrap]"); return; }
 
-  const CLIP_HIDDEN = "inset(0% 100% 0% 0%)"; // width 0, anchored to the left
+  const CLIP_HIDDEN = "inset(0% 0% 0% 100%)"; // width 0, anchored to the right
   const CLIP_SHOWN  = "inset(0% 0% 0% 0%)";   // full width
   const panels = [contact, menu].filter(Boolean);
 
