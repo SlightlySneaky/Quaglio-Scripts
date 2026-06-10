@@ -627,7 +627,10 @@ function initFormModal() {
   }
 
   function toggleMenu() {
-    if (shown === "menu") close();
+    // The hamburger closes the whole overlay whenever ANY panel is open
+    // (menu or contact), matching a [form-close] click; only opens the menu
+    // when nothing is showing.
+    if (shown) close();
     else show("menu");
   }
 
