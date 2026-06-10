@@ -10,6 +10,10 @@ let lenis = null;
 let nextPage = document;
 let onceFunctionsInitialized = false;
 
+// Set up by initNavThemeSwitch each page; lets the hamburger force a nav theme
+// while the menu is open and hand control back to the scroll position on close.
+let navThemeController = null;
+
 const hasLenis = typeof window.Lenis !== "undefined";
 const hasScrollTrigger = typeof window.ScrollTrigger !== "undefined";
 
@@ -61,7 +65,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-hero-parallax]')) initHeroParallax();
   if (has('[data-slideshow="wrap"]')) initFadeScaleSlideshows();
   if (has('.team-item')) initTeamHover();
-  if (has('[section-dark]') || has('[section-light]')) initNavThemeSwitch();
+  initNavThemeSwitch(); // always — sets up navThemeController for the hamburger
 
   if (hasLenis) {
     lenis.resize();
@@ -527,6 +531,8 @@ function initMenuToggle() {
         ease: "energy",
         overwrite: "auto",
       });
+      // Force the nav into the [section-light] look while the menu is open.
+      navThemeController?.lock("light");
     } else {
       gsap.to(toggleBars, {
         y: 0,
@@ -541,6 +547,8 @@ function initMenuToggle() {
         ease: "power3.in",
         overwrite: "auto",
       });
+      // Hand the nav back to whatever the scroll position wants.
+      navThemeController?.unlock();
     }
   });
 }
@@ -883,6 +891,7 @@ function initTeamHover() {
 // The active section is whichever one currently sits under the nav line; the
 // nav holds its last theme across any gaps (sections with neither attribute).
 function initNavThemeSwitch() {
+  navThemeController = null;
   if (!hasScrollTrigger) return;
 
   const navWrap = document.querySelector('[nav-wrap]');
@@ -892,10 +901,14 @@ function initNavThemeSwitch() {
   // Ensure the logo has a filter GSAP can tween from (invert(0) = untouched).
   if (navLogo) gsap.set(navLogo, { filter: 'invert(0)' });
 
-  let currentTheme = null;
-  const applyTheme = (theme) => {
-    if (theme === currentTheme) return; // already there — skip redundant tweens
-    currentTheme = theme;
+  let appliedTheme = null; // what the nav is currently showing
+  let scrollTheme  = null; // what the scroll position wants (latest section)
+  let locked       = false; // true while the menu forces a theme
+
+  // The actual visual change. Guarded so we skip redundant tweens.
+  const animateTo = (theme) => {
+    if (theme === appliedTheme) return;
+    appliedTheme = theme;
     const isDark = theme === 'dark';
 
     gsap.to(navWrap, {
@@ -913,6 +926,12 @@ function initNavThemeSwitch() {
         overwrite: 'auto',
       });
     }
+  };
+
+  // Scroll-driven updates record the desired theme but defer to the menu lock.
+  const applyTheme = (theme) => {
+    scrollTheme = theme;
+    if (!locked) animateTo(theme);
   };
 
   // Fire the switch when a section reaches the vertical middle of the nav, so
@@ -946,5 +965,23 @@ function initNavThemeSwitch() {
     });
     if (active) applyTheme(themeOf(active));
   });
+
+  // Exposed to the hamburger: lock the nav to a theme while the menu is open,
+  // then unlock to restore whatever the scroll position now wants.
+  let preLockTheme = null;
+  navThemeController = {
+    lock(theme) {
+      if (locked) return;
+      preLockTheme = appliedTheme;
+      locked = true;
+      animateTo(theme);
+    },
+    unlock() {
+      if (!locked) return;
+      locked = false;
+      const restore = scrollTheme || preLockTheme;
+      if (restore) animateTo(restore);
+    },
+  };
 }
 
