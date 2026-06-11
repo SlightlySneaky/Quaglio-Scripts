@@ -73,6 +73,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-hero-parallax]')) initHeroParallax();
   if (has('[data-slideshow="wrap"]')) initFadeScaleSlideshows();
   if (has('.team-item')) initTeamHover();
+  if (has('[project-item]')) initProjectHover();
   initNavSectionTriggers(); // recreate section triggers for this page's sections
 
   if (hasLenis) {
@@ -948,6 +949,28 @@ function initFadeScaleSlideshows(scope = document) {
 
   });
 
+}
+
+// -----------------------------------------
+// PROJECT HOVER
+// -----------------------------------------
+// Hover a [project-item]: scale its [project-img] 1 → 1.05 and rotate its
+// [project-icon] 0 → 180, both at once; reverse on hover out. Direct tweens
+// (not pre-built timelines) so a large CMS grid stays light.
+function initProjectHover() {
+  nextPage.querySelectorAll("[project-item]").forEach((item) => {
+    const img  = item.querySelector("[project-img]");
+    const icon = item.querySelector("[project-icon]");
+    if (!img && !icon) return;
+
+    const animate = (scale, rotation) => {
+      if (img)  gsap.to(img,  { scale, duration: 0.5, ease: "osmo", overwrite: "auto" });
+      if (icon) gsap.to(icon, { rotation, duration: 0.5, ease: "osmo", overwrite: "auto" });
+    };
+
+    item.addEventListener("mouseenter", () => animate(1.05, 180));
+    item.addEventListener("mouseleave", () => animate(1, 0));
+  });
 }
 
 // -----------------------------------------
