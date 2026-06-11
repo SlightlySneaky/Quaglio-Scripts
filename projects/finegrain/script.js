@@ -449,25 +449,31 @@ function initGlobalParallax() {
 
 function initImageFadeIns(scope = document) {
   const images = scope.querySelectorAll(".img");
+  if (!images.length) return;
 
-  images.forEach((img) => {
-    gsap.fromTo(
-      img,
-      {
-        opacity: 0,
-      },
-      {
+  gsap.set(images, { opacity: 0 });
+
+  // One IntersectionObserver for the whole grid instead of a ScrollTrigger per
+  // image. On a large CMS grid (hundreds of images) per-image ScrollTriggers
+  // are a major cost — every one is recalculated on each ScrollTrigger.refresh()
+  // and tracked every scroll frame. An observer is far lighter and, because each
+  // image unobserves itself after fading, the watch list shrinks as you scroll.
+  // rootMargin bottom -15% ≈ the old "top 85%" start. Lenis scrolls the window
+  // natively, so intersection ratios stay accurate.
+  const io = new IntersectionObserver((entries, obs) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      obs.unobserve(entry.target);
+      gsap.to(entry.target, {
         opacity: 1,
-        duration: 1.6, // slower
-        ease: "smoothReveal", // custom ease
-        scrollTrigger: {
-          trigger: img,
-          start: "top 85%",
-          toggleActions: "play none none none"
-        }
-      }
-    );
-  });
+        duration: 1.6,
+        ease: "smoothReveal",
+        overwrite: true,
+      });
+    });
+  }, { rootMargin: "0px 0px -15% 0px" });
+
+  images.forEach((img) => io.observe(img));
 }
 
 function initHeroParallax() {
