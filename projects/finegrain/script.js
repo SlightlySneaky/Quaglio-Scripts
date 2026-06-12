@@ -49,6 +49,10 @@ function initOnceFunctions() {
 
   // Runs once on first load
   // if (has('[data-something]')) initSomething();
+  // Bind accordions up front (before the form setup below, which could throw),
+  // so the home page's accordions work even on first load. Guarded against
+  // double-binding, so the per-page call in initAfterEnterFunctions is safe too.
+  if (document.querySelector('[data-accordion-css-init]')) initAccordionCSS();
   initNavTheme(); // persistent nav-theme applier (survives Barba)
   if (document.querySelector('[data-underlay-nav-toggle]')) initMenuToggle();
   if (document.querySelector('[form-wrap]')) initFormModal();
@@ -346,6 +350,9 @@ function initBarbaNavUpdate(data) {
 // -----------------------------------------
 function initAccordionCSS() {
   document.querySelectorAll('[data-accordion-css-init]').forEach((accordion) => {
+    if (accordion._accordionInit) return; // already wired — don't double-bind
+    accordion._accordionInit = true;
+
     const closeSiblings = accordion.getAttribute('data-accordion-close-siblings') === 'true';
 
     accordion.addEventListener('click', (event) => {
