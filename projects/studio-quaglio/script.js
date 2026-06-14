@@ -6,6 +6,37 @@ gsap.registerPlugin(CustomEase, ScrollTrigger, Observer);
 
 history.scrollRestoration = "manual";
 
+// ===== TEMP DEBUG OVERLAY =====
+// The live page noops window.console, so logs go to an on-screen panel (visible
+// on mobile too). Also reports the main container's inline position so we can see
+// if it stays `fixed`. Remove this whole block (and the SQLOG() calls) when done.
+const SQLOG = (() => {
+  let box;
+  const t0 = (window.performance && performance.now) ? performance.now() : 0;
+  const ensure = () => {
+    if (box) return box;
+    box = document.createElement("div");
+    box.style.cssText =
+      "position:fixed;top:0;left:0;right:0;max-height:50vh;overflow:auto;z-index:2147483647;" +
+      "background:rgba(0,0,0,.85);color:#0f0;font:11px/1.45 monospace;padding:6px;" +
+      "white-space:pre-wrap;pointer-events:none;";
+    (document.body || document.documentElement).appendChild(box);
+    return box;
+  };
+  return (...args) => {
+    const now = (window.performance && performance.now) ? performance.now() : 0;
+    const ms = Math.round(now - t0);
+    const msg = args.map(a => (a && typeof a === "object") ? JSON.stringify(a) : String(a)).join(" ");
+    try { ensure().textContent += `+${ms}ms  ${msg}\n`; } catch (e) {}
+  };
+})();
+window.addEventListener("error", (e) =>
+  SQLOG("‼️ ERROR:", e.message, (e.filename || "").split("/").pop() + ":" + e.lineno));
+window.addEventListener("unhandledrejection", (e) =>
+  SQLOG("‼️ PROMISE REJECT:", (e.reason && e.reason.message) || e.reason));
+const sqPos = (el) => el ? (el.style.position || getComputedStyle(el).position) : "no-el";
+// ===== END TEMP DEBUG OVERLAY =====
+
 let lenis = null;
 let nextPage = document;
 let onceFunctionsInitialized = false;
@@ -21,6 +52,7 @@ let onceRevealFn = null;      // set by runPageOnceAnimation once the page is pr
 let preloaderLifted = false;  // set true when the preloader lifts (or there is none)
 
 function triggerOnceReveal() {
+  SQLOG("triggerOnceReveal() — onceRevealFn set?", !!onceRevealFn);
   if (!onceRevealFn) return;
   const fn = onceRevealFn;
   onceRevealFn = null;        // guard against firing twice
@@ -30,6 +62,7 @@ function triggerOnceReveal() {
 // Called by the preloader the moment it starts lifting (or immediately if there
 // is no preloader on the page).
 function preloaderHasLifted() {
+  SQLOG("preloaderHasLifted()");
   preloaderLifted = true;
   triggerOnceReveal();
 }
@@ -255,28 +288,35 @@ function runLoadAnimations(container) {
 }
 
 function runPageOnceAnimation(next) {
+  SQLOG("runPageOnceAnimation() start — container position:", sqPos(next));
+
   // Restore scroll + clear the fixed positioning beforeEnter applied, RIGHT NOW
   // (not gated on the preloader) so the page can never end up stuck behind the
   // mask. The mask covers the page, so doing this early isn't visible.
   resetPage(next);
+  SQLOG("after resetPage — container position:", sqPos(next), "| lenis?", !!lenis);
 
   // Prep the entrance now — split/hide every [data-load] element — so it's ready
   // and waiting while the preloader masks the page (and images load behind it).
   prepLoadAnimations(next);
+  SQLOG("after prepLoadAnimations — [data-load] count:", next.querySelectorAll("[data-load]").length);
 
   // The actual reveal, deferred until the preloader lifts. Same [data-load]
   // entrance the page plays on navigation, now timed to the loader.
   onceRevealFn = () => {
+    SQLOG("reveal fn RUNNING — container position:", sqPos(next));
     const tl = gsap.timeline();
 
     // Colorflow background is held at opacity 0 during init — fade it in now.
     const colorflow = next.querySelector('iframe[src*="colorflow"]');
+    SQLOG("reveal — colorflow found?", !!colorflow);
     if (colorflow) tl.fromTo(colorflow, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "osmo" }, 0);
 
     tl.add(buildLoadAnimationsTimeline(next), 0);
   };
 
   // If the preloader already lifted (or there is none), reveal immediately.
+  SQLOG("onceRevealFn set — preloaderLifted?", preloaderLifted);
   if (preloaderLifted) triggerOnceReveal();
 
   // Resolve barba's once right away — the reveal runs independently so a slow
@@ -372,6 +412,7 @@ barba.hooks.before(data => {
 });
 
 barba.hooks.beforeEnter(data => {
+  SQLOG("barba beforeEnter() — setting container position:fixed + lenis.stop");
   // Position new container on top
   gsap.set(data.next.container, {
     position: "fixed",
@@ -432,10 +473,15 @@ barba.init({
       // script now (afterEnter only runs on later navigations) — otherwise none
       // of the per-section scripts initialise on the landing page.
       async once(data) {
+        SQLOG("barba once() START");
         initOnceFunctions();
+        SQLOG("once: initOnceFunctions done");
         initAfterEnterFunctions(data.next.container);
+        SQLOG("once: initAfterEnterFunctions done");
 
-        return runPageOnceAnimation(data.next.container);
+        const r = runPageOnceAnimation(data.next.container);
+        SQLOG("once: runPageOnceAnimation returned");
+        return r;
       },
 
       // Current page leaves
@@ -630,19 +676,12 @@ function initColorflowPrewarm() {
 
 function initWelcomingWordsLoader() {
   const loadingContainer = document.querySelector('[data-loading-container]');
+  SQLOG("initWelcomingWordsLoader() — container found?", !!loadingContainer);
   // No preloader on this page — let the page entrance run straight away.
   if (!loadingContainer) { preloaderHasLifted(); return; }
 
-  // ----- TEMP: preloader DISABLED for testing -----
-  // Hide the loader instantly (no word animation, no mask) and release the page
-  // entrance immediately, to check whether the preloader is causing the
-  // first-load issues. Delete this block to restore the preloader.
-  gsap.set(loadingContainer, { autoAlpha: 0 });
-  preloaderHasLifted();
-  return;
-  // ----- END TEMP -----
-
   const loadingWords = loadingContainer.querySelector('[data-loading-words]');
+  SQLOG("loader — loadingWords found?", !!loadingWords);
   // Malformed loader markup — don't leave the entrance waiting forever.
   if (!loadingWords) { preloaderHasLifted(); return; }
 
@@ -688,6 +727,7 @@ function initWelcomingWordsLoader() {
 // Initialize Welcoming Words Loader. Guard for readyState so it still runs (and
 // calls preloaderHasLifted) when the script loads after DOMContentLoaded has
 // already fired — otherwise the first-load reveal would never be triggered.
+SQLOG("loader registration — document.readyState:", document.readyState);
 if (document.readyState === "loading") {
   document.addEventListener('DOMContentLoaded', initWelcomingWordsLoader);
 } else {
