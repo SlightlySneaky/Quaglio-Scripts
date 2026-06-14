@@ -1375,15 +1375,42 @@ function initDraggableMarquee() {
     const baseDirection = initialDirectionAttr === "right" ? -1 : 1;
     const timeScale = { value: baseDirection };
 
+    // The steady-state speed/direction the marquee returns to (after a hover or a
+    // drag flick). Updated by drags so "resume" honours the last flicked direction.
+    let restingTimeScale = baseDirection;
+    let isHovered = false;
+
     wrapper.setAttribute("data-direction", baseDirection < 0 ? "right" : "left");
     if (baseDirection < 0) marqueeLoop.progress(1);
 
     function applyTimeScale() {
       marqueeLoop.timeScale(timeScale.value);
-      wrapper.setAttribute("data-direction", timeScale.value < 0 ? "right" : "left");
+      // Don't flip the direction attribute while paused at 0 — keep the last real
+      // direction so CSS tied to data-direction doesn't twitch on hover.
+      if (timeScale.value !== 0) {
+        wrapper.setAttribute("data-direction", timeScale.value < 0 ? "right" : "left");
+      }
     }
 
     applyTimeScale();
+
+    // Hover: ease the speed down to a full stop, then ease it back up to the
+    // resting direction on leave. Tweened (never set) so it always glides — it
+    // never snaps to a halt or jumps back to full speed. Mouse-only: touch
+    // devices have no hover and use the drag Observer below instead.
+    const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (canHover) {
+      wrapper.addEventListener("mouseenter", () => {
+        isHovered = true;
+        gsap.killTweensOf(timeScale);
+        gsap.to(timeScale, { value: 0, duration: 0.8, ease: "power2.out", onUpdate: applyTimeScale });
+      });
+      wrapper.addEventListener("mouseleave", () => {
+        isHovered = false;
+        gsap.killTweensOf(timeScale);
+        gsap.to(timeScale, { value: restingTimeScale, duration: 1.5, ease: "power1.inOut", onUpdate: applyTimeScale });
+      });
+    }
 
     const marqueeObserver = Observer.create({
       target: wrapper,
@@ -1394,9 +1421,12 @@ function initDraggableMarquee() {
         let velocityTimeScale = gsap.utils.clamp(-multiplier, multiplier, observerEvent.velocityX * -sensitivity);
         gsap.killTweensOf(timeScale);
         const restingDirection = velocityTimeScale < 0 ? -1 : 1;
+        restingTimeScale = restingDirection;
         gsap.timeline({ onUpdate: applyTimeScale })
           .to(timeScale, { value: velocityTimeScale, duration: 0.1, overwrite: true })
-          .to(timeScale, { value: restingDirection,  duration: 1.0 });
+          // If the user is still hovering after a flick, settle to a stop; the
+          // marquee resumes (toward restingTimeScale) once the mouse leaves.
+          .to(timeScale, { value: isHovered ? 0 : restingDirection, duration: 1.0 });
       }
     });
 
