@@ -22,3 +22,10 @@
 [data-load] {
   opacity: 0;
 }
+
+/* Marquee: let vertical swipes scroll the page natively while horizontal drags
+   still scrub the marquee. Without this the drag Observer's preventDefault:true
+   blocks touch scrolling whenever a swipe starts on the marquee (mobile/tablet). */
+[data-draggable-marquee-init] {
+  touch-action: pan-y;
+}

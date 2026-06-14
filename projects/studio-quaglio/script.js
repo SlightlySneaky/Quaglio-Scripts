@@ -299,15 +299,9 @@ function runPageEnterAnimation(next){
     duration: 0.75,
   }, "startEnter");
 
-  tl.fromTo(next.querySelector('h1'), {
-    yPercent: 25,
-    autoAlpha: 0,
-  }, {
-    yPercent: 0,
-    autoAlpha: 1,
-    ease: "expo.out",
-    duration: 1,
-  }, "< 0.3");
+  // NOTE: the hero h1 carries data-load, so its entrance is handled by the
+  // runLoadAnimations() reveal below (on first load via runPageOnceAnimation,
+  // on nav via the .call here). A separate h1 tween here would race that reveal.
 
   if (colorflow) tl.fromTo(colorflow, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "osmo" }, "startEnter");
 
@@ -1363,6 +1357,9 @@ function initDraggableMarquee() {
     const marqueeObserver = Observer.create({
       target: wrapper,
       type: "pointer,touch",
+      // Lock to the first drag axis so a vertical swipe is ignored here and the
+      // page scrolls natively (paired with touch-action: pan-y in the CSS).
+      lockAxis: true,
       preventDefault: true,
       debounce: false,
       onChangeX: (observerEvent) => {
