@@ -106,19 +106,25 @@ function initAfterEnterFunctions(next) {
   if (nextPage.__sqInit) return;
   nextPage.__sqInit = true;
 
-  // Runs after enter animation completes
-  // if (has('[data-something]')) initSomething();
-    // Runs after enter animation completes
-  if (document.querySelector('[data-theme-nav]'))           initNavAnimation();
-  if (has('[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]')) initSplitTextAndReveal();
-  if (has('[data-hero-parallax]'))                initHeroParallax();
-  if (has('[data-parallax="trigger"]'))           initGlobalParallax();
-  if (has('[data-swiper-group="1"] .swiper'))     initTestimonialSlider();
-  if (has('[data-swiper-group="2"]'))             initSwiperSlider();
-  if (has('[data-accordion-css-init]'))           initAccordionCSS();
-  if (has('[data-draggable-marquee-init]'))       initDraggableMarquee();
-  if (has('[data-cal-inline]'))                   initCalEmbeds(nextPage);
-  if (has('[data-scroll-next-wrap]'))             initScrollToNextPage();
+  // Run each per-section init in isolation. A throw in any one (e.g. Swiper's
+  // mount blowing up on first load) must NOT abort the rest — and critically, on
+  // first load this runs inside barba's `once` right before runPageOnceAnimation,
+  // so an uncaught throw here would skip resetPage + the reveal and leave the
+  // whole page frozen (stuck position:fixed, unscrollable, content hidden).
+  const safe = (label, fn) => {
+    try { fn(); } catch (e) { console.error("[init] " + label + " failed:", e); }
+  };
+
+  if (document.querySelector('[data-theme-nav]'))           safe("nav", initNavAnimation);
+  if (has('[split-heading]:not([hero]), [split-body]:not([hero]), [reveal-block]')) safe("splitText", initSplitTextAndReveal);
+  if (has('[data-hero-parallax]'))                safe("heroParallax", initHeroParallax);
+  if (has('[data-parallax="trigger"]'))           safe("globalParallax", initGlobalParallax);
+  if (has('[data-swiper-group="1"] .swiper'))     safe("testimonialSlider", initTestimonialSlider);
+  if (has('[data-swiper-group="2"]'))             safe("swiperSlider", initSwiperSlider);
+  if (has('[data-accordion-css-init]'))           safe("accordion", initAccordionCSS);
+  if (has('[data-draggable-marquee-init]'))       safe("marquee", initDraggableMarquee);
+  if (has('[data-cal-inline]'))                   safe("cal", () => initCalEmbeds(nextPage));
+  if (has('[data-scroll-next-wrap]'))             safe("scrollNext", initScrollToNextPage);
 
 
   // Colorflow is faded in by the page-enter animations (runPageOnceAnimation on
