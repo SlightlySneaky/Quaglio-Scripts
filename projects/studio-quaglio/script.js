@@ -11,11 +11,28 @@ let nextPage = document;
 let onceFunctionsInitialized = false;
 let colorflowPreloadIframe = null;
 
-// Resolves when the first-load preloader lifts (or immediately when there's no
-// preloader). runPageOnceAnimation awaits this so the page entrance + [data-load]
-// reveal play AS the loader lifts, instead of finishing hidden behind it.
-let resolvePreloaderDone;
-const preloaderDone = new Promise((resolve) => { resolvePreloaderDone = resolve; });
+// First-load entrance coordination. The preloader masks the page while
+// runPageOnceAnimation preps the [data-load] reveal. The reveal fires when BOTH
+// sides are ready — the page is prepped AND the preloader has lifted — and the
+// two can happen in either order. Deliberately decoupled from barba's once
+// promise: barba is never blocked on the preloader, so a missing or slow loader
+// can't leave the page frozen (unscrollable, content stuck hidden).
+let onceRevealFn = null;      // set by runPageOnceAnimation once the page is prepped
+let preloaderLifted = false;  // set true when the preloader lifts (or there is none)
+
+function triggerOnceReveal() {
+  if (!onceRevealFn) return;
+  const fn = onceRevealFn;
+  onceRevealFn = null;        // guard against firing twice
+  fn();
+}
+
+// Called by the preloader the moment it starts lifting (or immediately if there
+// is no preloader on the page).
+function preloaderHasLifted() {
+  preloaderLifted = true;
+  triggerOnceReveal();
+}
 
 const hasLenis = typeof window.Lenis !== "undefined";
 const hasScrollTrigger = typeof window.ScrollTrigger !== "undefined";
@@ -237,27 +254,34 @@ function runLoadAnimations(container) {
   return buildLoadAnimationsTimeline(container);
 }
 
-async function runPageOnceAnimation(next) {
-  // Hold the first-load entrance until the preloader lifts — otherwise the
-  // colorflow + [data-load] reveal play out behind the loader and the page is
-  // already static (and feels unscrollable) by the time it disappears.
-  await preloaderDone;
+function runPageOnceAnimation(next) {
+  // Restore scroll + clear the fixed positioning beforeEnter applied, RIGHT NOW
+  // (not gated on the preloader) so the page can never end up stuck behind the
+  // mask. The mask covers the page, so doing this early isn't visible.
+  resetPage(next);
 
-  const tl = gsap.timeline();
+  // Prep the entrance now — split/hide every [data-load] element — so it's ready
+  // and waiting while the preloader masks the page (and images load behind it).
+  prepLoadAnimations(next);
 
-  tl.call(() => {
-    resetPage(next);
-  }, null, 0);
+  // The actual reveal, deferred until the preloader lifts. Same [data-load]
+  // entrance the page plays on navigation, now timed to the loader.
+  onceRevealFn = () => {
+    const tl = gsap.timeline();
 
-  // Colorflow background is held at opacity 0 during init — fade it in on first load.
-  const colorflow = next.querySelector('iframe[src*="colorflow"]');
-  if (colorflow) tl.fromTo(colorflow, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "osmo" }, 0);
+    // Colorflow background is held at opacity 0 during init — fade it in now.
+    const colorflow = next.querySelector('iframe[src*="colorflow"]');
+    if (colorflow) tl.fromTo(colorflow, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "osmo" }, 0);
 
-  // Reveal [data-load] content. The CSS [data-load] opacity:0 hides it until this
-  // runs, so without it the page would load blank.
-  tl.add(runLoadAnimations(next));
+    tl.add(buildLoadAnimationsTimeline(next), 0);
+  };
 
-  return tl;
+  // If the preloader already lifted (or there is none), reveal immediately.
+  if (preloaderLifted) triggerOnceReveal();
+
+  // Resolve barba's once right away — the reveal runs independently so a slow
+  // preloader never trips barba's transition timeout.
+  return gsap.timeline();
 }
 
 function runPageLeaveAnimation(current, next) {
@@ -607,11 +631,11 @@ function initColorflowPrewarm() {
 function initWelcomingWordsLoader() {
   const loadingContainer = document.querySelector('[data-loading-container]');
   // No preloader on this page — let the page entrance run straight away.
-  if (!loadingContainer) { resolvePreloaderDone(); return; }
+  if (!loadingContainer) { preloaderHasLifted(); return; }
 
   const loadingWords = loadingContainer.querySelector('[data-loading-words]');
   // Malformed loader markup — don't leave the entrance waiting forever.
-  if (!loadingWords) { resolvePreloaderDone(); return; }
+  if (!loadingWords) { preloaderHasLifted(); return; }
 
   const wordsTarget = loadingWords.querySelector('[data-loading-words-target]');
   const words = loadingWords.getAttribute('data-loading-words').split(',').map(w => w.trim());
@@ -648,13 +672,13 @@ function initWelcomingWordsLoader() {
     ease: "Power1.easeInOut",
     // Release the page entrance as the loader starts lifting, so the hero
     // animates in underneath the fade rather than after a blank gap.
-    onStart: () => resolvePreloaderDone()
+    onStart: () => preloaderHasLifted()
   }, "+ -0.2");
 }
 
 // Initialize Welcoming Words Loader. Guard for readyState so it still runs (and
-// resolves preloaderDone) when the script loads after DOMContentLoaded has fired
-// — otherwise runPageOnceAnimation's await would hang and the page never reveals.
+// calls preloaderHasLifted) when the script loads after DOMContentLoaded has
+// already fired — otherwise the first-load reveal would never be triggered.
 if (document.readyState === "loading") {
   document.addEventListener('DOMContentLoaded', initWelcomingWordsLoader);
 } else {
