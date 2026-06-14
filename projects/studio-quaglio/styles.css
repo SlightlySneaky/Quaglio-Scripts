@@ -28,4 +28,7 @@
    blocks touch scrolling whenever a swipe starts on the marquee (mobile/tablet). */
 [data-draggable-marquee-init] {
   touch-action: pan-y;
+  /* Drag-only: never let the marquee text be selected/highlighted. */
+  -webkit-user-select: none;
+  user-select: none;
 }

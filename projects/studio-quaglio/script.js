@@ -1409,10 +1409,14 @@ function initDraggableMarquee() {
     const marqueeObserver = Observer.create({
       target: wrapper,
       type: "pointer,touch",
-      // Lock to the first drag axis so a vertical swipe is ignored here and the
-      // page scrolls natively (paired with touch-action: pan-y in the CSS).
+      // Lock to the first drag axis so a vertical swipe is ignored here.
       lockAxis: true,
-      preventDefault: true,
+      // preventDefault MUST stay false on touch — with it true the Observer
+      // calls preventDefault() on every touchmove, which overrides the CSS and
+      // blocks native vertical page scroll inside the marquee section. Axis
+      // separation is handled purely by `touch-action: pan-y` in the CSS:
+      // vertical = native scroll, horizontal = marquee drag.
+      preventDefault: false,
       debounce: false,
       onChangeX: (observerEvent) => {
         let velocityTimeScale = gsap.utils.clamp(-multiplier, multiplier, observerEvent.velocityX * -sensitivity);
