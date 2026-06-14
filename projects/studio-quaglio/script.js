@@ -679,7 +679,6 @@ function initWelcomingWordsLoader() {
 // Initialize Welcoming Words Loader. Guard for readyState so it still runs (and
 // calls preloaderHasLifted) when the script loads after DOMContentLoaded has
 // already fired — otherwise the first-load reveal would never be triggered.
-SQLOG("loader registration — document.readyState:", document.readyState);
 if (document.readyState === "loading") {
   document.addEventListener('DOMContentLoaded', initWelcomingWordsLoader);
 } else {
