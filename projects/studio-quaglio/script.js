@@ -188,7 +188,12 @@ function buildLoadAnimationsTimeline(root) {
     (groups[order] = groups[order] || []).push(el);
   });
 
-  Object.keys(groups).map(Number).sort((a, b) => a - b).forEach(order => {
+  // How long after one group STARTS the next group begins. Groups overlap instead
+  // of waiting for the previous to finish, so the whole load reads noticeably
+  // faster while still cascading in order. Bump up for more spacing, down for tighter.
+  const GROUP_OVERLAP = 0.15;
+
+  Object.keys(groups).map(Number).sort((a, b) => a - b).forEach((order, index) => {
     const groupTl = gsap.timeline();
 
     groups[order].forEach(el => {
@@ -210,7 +215,9 @@ function buildLoadAnimationsTimeline(root) {
       }
     });
 
-    masterTl.add(groupTl);
+    // First group at 0; each later group starts GROUP_OVERLAP after the previous
+    // group's start ("<" = previous insertion's start), so they cascade + overlap.
+    masterTl.add(groupTl, index === 0 ? 0 : `<${GROUP_OVERLAP}`);
   });
 
   return masterTl;
