@@ -11,6 +11,12 @@ let nextPage = document;
 let onceFunctionsInitialized = false;
 let colorflowPreloadIframe = null;
 
+// Resolves when the first-load preloader lifts (or immediately when there's no
+// preloader). runPageOnceAnimation awaits this so the page entrance + [data-load]
+// reveal play AS the loader lifts, instead of finishing hidden behind it.
+let resolvePreloaderDone;
+const preloaderDone = new Promise((resolve) => { resolvePreloaderDone = resolve; });
+
 const hasLenis = typeof window.Lenis !== "undefined";
 const hasScrollTrigger = typeof window.ScrollTrigger !== "undefined";
 
@@ -231,7 +237,12 @@ function runLoadAnimations(container) {
   return buildLoadAnimationsTimeline(container);
 }
 
-function runPageOnceAnimation(next) {
+async function runPageOnceAnimation(next) {
+  // Hold the first-load entrance until the preloader lifts — otherwise the
+  // colorflow + [data-load] reveal play out behind the loader and the page is
+  // already static (and feels unscrollable) by the time it disappears.
+  await preloaderDone;
+
   const tl = gsap.timeline();
 
   tl.call(() => {
@@ -595,9 +606,13 @@ function initColorflowPrewarm() {
 
 function initWelcomingWordsLoader() {
   const loadingContainer = document.querySelector('[data-loading-container]');
-  if (!loadingContainer) return; // Stop animation when no [data-loading-words] is found
+  // No preloader on this page — let the page entrance run straight away.
+  if (!loadingContainer) { resolvePreloaderDone(); return; }
 
   const loadingWords = loadingContainer.querySelector('[data-loading-words]');
+  // Malformed loader markup — don't leave the entrance waiting forever.
+  if (!loadingWords) { resolvePreloaderDone(); return; }
+
   const wordsTarget = loadingWords.querySelector('[data-loading-words-target]');
   const words = loadingWords.getAttribute('data-loading-words').split(',').map(w => w.trim());
 
@@ -630,14 +645,21 @@ function initWelcomingWordsLoader() {
   tl.to(loadingContainer, {
     autoAlpha: 0,
     duration: 0.6,
-    ease: "Power1.easeInOut"
+    ease: "Power1.easeInOut",
+    // Release the page entrance as the loader starts lifting, so the hero
+    // animates in underneath the fade rather than after a blank gap.
+    onStart: () => resolvePreloaderDone()
   }, "+ -0.2");
 }
 
-// Initialize Welcoming Words Loader
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize Welcoming Words Loader. Guard for readyState so it still runs (and
+// resolves preloaderDone) when the script loads after DOMContentLoaded has fired
+// — otherwise runPageOnceAnimation's await would hang and the page never reveals.
+if (document.readyState === "loading") {
+  document.addEventListener('DOMContentLoaded', initWelcomingWordsLoader);
+} else {
   initWelcomingWordsLoader();
-});
+}
 
 // Re-measure all ScrollTriggers after Lenis has had a frame to settle, then
 // re-assert the nav theme for whatever section is currently in view.
