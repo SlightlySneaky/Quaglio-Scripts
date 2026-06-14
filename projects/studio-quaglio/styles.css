@@ -11,3 +11,14 @@
 }
 
 /* Add your component styles below */
+
+/* Hide load-animated elements up front so they don't flash in at full opacity
+   before JS hides them. The JS (prepLoadAnimations / buildLoadAnimationsTimeline)
+   sets an inline opacity on every [data-load] element — split copy + reveal-block —
+   which overrides this and animates it in. Covers both first load and Barba nav,
+   including the reduced-motion path (which reveals them immediately).
+   NOTE: every [data-load] element must carry split-heading / split-body /
+   reveal-block, or it has no reveal step and will stay hidden. */
+[data-load] {
+  opacity: 0;
+}

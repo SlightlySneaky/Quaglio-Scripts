@@ -165,7 +165,9 @@ function prepLoadAnimations(root) {
       gsap.set(el, { autoAlpha: 0, yPercent: 20 });
       el._loadAnim = { kind: "whole" };
     } else if (el.hasAttribute("reveal-block")) {
-      gsap.set(el, { clipPath: "inset(0 100% 0 0)", willChange: "clip-path" });
+      // autoAlpha:1 clears the CSS [data-load] opacity:0 — the clip-path does the
+      // hiding here, so without this the block would stay invisible after reveal.
+      gsap.set(el, { autoAlpha: 1, clipPath: "inset(0 100% 0 0)", willChange: "clip-path" });
       el._loadAnim = { kind: "reveal-block" };
     }
   });
@@ -233,105 +235,85 @@ function runPageOnceAnimation(next) {
   const tl = gsap.timeline();
 
   tl.call(() => {
-    resetPage(next)
+    resetPage(next);
   }, null, 0);
 
-  // Fade the colorflow background in from 0 opacity on first load (mirrors the
-  // navigation reveal in runPageLeaveAnimation). Self-contained fromTo so it
-  // shows regardless of whether anything pre-hid it.
+  // Colorflow background is held at opacity 0 during init — fade it in on first load.
   const colorflow = next.querySelector('iframe[src*="colorflow"]');
   if (colorflow) tl.fromTo(colorflow, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "osmo" }, 0);
 
+  // Reveal [data-load] content. The CSS [data-load] opacity:0 hides it until this
+  // runs, so without it the page would load blank.
   tl.add(runLoadAnimations(next));
 
   return tl;
 }
 
 function runPageLeaveAnimation(current, next) {
-  const parent = current.parentElement || document.body;
-  const transitionWrap = document.querySelector("[data-transition-wrap]");
-  const transitionDark = transitionWrap.querySelector("[data-transition-dark]");
-  
-  // Helper function to prepare transition structure
-  const { wrapper } = prepareForTransition(parent, current, next);
-
-  // The colorflow background is held at opacity 0 while WebGL initialises
-  // (see initBeforeEnterFunctions) — we fade it in as the new page arrives.
-  const nextColorflow = next.querySelector('iframe[src*="colorflow"]');
 
   const tl = gsap.timeline({
     onComplete: () => {
-      wrapper.replaceWith(next);
-      gsap.set(next, {clearProps: "all" });
+      current.remove();
     }
   });
 
   if (reducedMotion) {
     // Immediate swap behavior if user prefers reduced motion
-    if (nextColorflow) gsap.set(nextColorflow, { opacity: 1 });
     return tl.set(current, { autoAlpha: 0 });
   }
 
-  // Hide the incoming page's [data-load] elements now (before the wrapper opens
-  // and reveals them), so they can animate in cleanly as the transition lands.
-  prepLoadAnimations(next);
-
-  // Fade the colorflow background in FIRST, from 0 opacity, so it leads the new
-  // page (rather than snapping in from a placeholder) before the content loads.
-  // Self-contained fromTo so the reveal never depends on a separate hide step.
-  if (nextColorflow) {
-    tl.fromTo(nextColorflow, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "osmo" }, 0);
-  }
-
-  tl.set(transitionWrap, {
-    zIndex: 2
-  });
-  
-  tl.fromTo(transitionDark, {
-    autoAlpha: 0
-  },{
-    autoAlpha: 0.5,
-    duration: 0.9,
-  }, 0);  
-
-  tl.to(wrapper, {
-    yPercent: 0,
-    duration: 0.75,
-  }, 0);
-
-  tl.to(wrapper, {
-    duration: 0.9,
-    clipPath: "inset(0% round 0em)"
-  }, "<");
-  
   tl.to(current, {
-    scale: 1.05,
-    duration: 0.9,
-    overwrite: "auto"
-  }, "<");
-  
-  tl.set(transitionDark, {
     autoAlpha: 0,
-  });
-
-  // Launch the incoming page's [data-load] reveal just before the transition
-  // completes. Fired from a callback (not added to the timeline) so it can finish
-  // after the wrapper is swapped out without delaying the transition's onComplete.
-  tl.call(() => buildLoadAnimationsTimeline(next), null, "-=0.3");
+    ease: "power1.in",
+    duration: 0.5,
+  }, 0);
 
   return tl;
 }
 
 function runPageEnterAnimation(next){
   const tl = gsap.timeline();
-  
+
+  // Colorflow background is held at opacity 0 by initBeforeEnterFunctions — fade
+  // it back in as the new page arrives.
+  const colorflow = next.querySelector('iframe[src*="colorflow"]');
+
   if (reducedMotion) {
     // Immediate swap behavior if user prefers reduced motion
     tl.set(next, { autoAlpha: 1 });
-    tl.add("pageReady")
+    if (colorflow) gsap.set(colorflow, { opacity: 1 });
+    // Skips the reveal timeline, so clear the CSS [data-load] opacity:0 directly.
+    gsap.set(next.querySelectorAll("[data-load]"), { autoAlpha: 1 });
+    tl.add("pageReady");
     tl.call(resetPage, [next], "pageReady");
     return new Promise(resolve => tl.call(resolve, null, "pageReady"));
   }
+
+  tl.add("startEnter", 0);
+
+  tl.fromTo(next, {
+    autoAlpha: 0,
+  }, {
+    autoAlpha: 1,
+    ease: "power1.inOut",
+    duration: 0.75,
+  }, "startEnter");
+
+  tl.fromTo(next.querySelector('h1'), {
+    yPercent: 25,
+    autoAlpha: 0,
+  }, {
+    yPercent: 0,
+    autoAlpha: 1,
+    ease: "expo.out",
+    duration: 1,
+  }, "< 0.3");
+
+  if (colorflow) tl.fromTo(colorflow, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "osmo" }, "startEnter");
+
+  // Kick off the [data-load] reveal independently (a .call, not added to the
+  // timeline) so it can finish without delaying pageReady — same as before.
+  tl.call(() => runLoadAnimations(next), null, "startEnter");
 
   tl.add("pageReady");
   tl.call(resetPage, [next], "pageReady");
@@ -339,47 +321,6 @@ function runPageEnterAnimation(next){
   return new Promise(resolve => {
     tl.call(resolve, null, "pageReady");
   });
-}
-
-function prepareForTransition(parent, current, next){
-
-  const scrollY = window.scrollY;
-
-  // Freeze current page in place
-  gsap.set(current, {
-    position: "fixed",
-    top: -scrollY,
-    left: 0,
-    width: "100%",
-    overflow: "hidden"
-  });
-
-  // Reset browser scroll so next page starts correctly
-  window.scrollTo(0, 0);
-
-  // Create wrapper
-  const wrapper = document.createElement("div");
-  wrapper.className = "page-transition__wrapper";
-
-  parent.insertBefore(wrapper, next);
-  wrapper.appendChild(next);
-
-  gsap.set(wrapper, {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    width: "100%",
-    height: "100vh",
-    yPercent: 50,
-    overflow: "clip",
-    zIndex: 5,
-    transformStyle: "preserve-3d",
-    willChange: "transform, clip-path",
-    clipPath: "inset(50% round 3em)",
-  });
-
-  return { wrapper };
 }
 
 
