@@ -633,6 +633,15 @@ function initWelcomingWordsLoader() {
   // No preloader on this page — let the page entrance run straight away.
   if (!loadingContainer) { preloaderHasLifted(); return; }
 
+  // ----- TEMP: preloader DISABLED for testing -----
+  // Hide the loader instantly (no word animation, no mask) and release the page
+  // entrance immediately, to check whether the preloader is causing the
+  // first-load issues. Delete this block to restore the preloader.
+  gsap.set(loadingContainer, { autoAlpha: 0 });
+  preloaderHasLifted();
+  return;
+  // ----- END TEMP -----
+
   const loadingWords = loadingContainer.querySelector('[data-loading-words]');
   // Malformed loader markup — don't leave the entrance waiting forever.
   if (!loadingWords) { preloaderHasLifted(); return; }
