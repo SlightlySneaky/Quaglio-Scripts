@@ -17,10 +17,12 @@
    heading's line-height is tighter than the font's full glyph extent, the mask
    clips ascenders/descenders (flat-topped/bottomed letters). Give the mask
    wrappers vertical breathing room and pull it back with a matching negative
-   margin, so the clip region grows but line spacing is unchanged. */
-.char-mask,
-.line-mask,
-.word-mask {
+   margin, so the clip region grows but line spacing is unchanged.
+   NOTE: GSAP ignores the maskClass option and names the wrapper {splitClass}-mask
+   (e.g. is-split-char -> is-split-char-mask), so target those real classes. */
+.is-split-char-mask,
+.is-split-line-mask,
+.is-split-word-mask {
   padding-block: 0.15em;
   margin-block: -0.15em;
 }
