@@ -594,7 +594,6 @@ function initFormModal() {
   const menu    = wrap.querySelector("[form-inner-menu]");
   const bg      = wrap.querySelector("[form-bg]");
   const closers = wrap.querySelectorAll("[form-close]");
-  const openers = document.querySelectorAll("[form-open]");
   if (!contact) { console.error("❌ Form overlay: [form-inner-contact] not found inside [form-wrap]"); return; }
 
   const CLIP_HIDDEN = "inset(0% 0% 0% 100%)"; // width 0, anchored to the right
@@ -668,7 +667,14 @@ function initFormModal() {
     else show("menu");
   }
 
-  openers.forEach((el) => el.addEventListener("click", () => show("contact")));
+  // [form-open] buttons can live INSIDE the Barba container (e.g. the footer
+  // button), so Barba swaps them out on navigation and any directly-bound
+  // listener dies with the old node — the button goes dead on the next page.
+  // Delegate on the document so any current-or-future [form-open] opens contact.
+  // (closers/bg live inside the persistent [form-wrap], so direct binding is fine.)
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("[form-open]")) show("contact");
+  });
   closers.forEach((el) => el.addEventListener("click", close));
   if (bg) bg.addEventListener("click", close);
 
