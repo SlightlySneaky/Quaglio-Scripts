@@ -1014,7 +1014,7 @@ function initTeamHover() {
 // stays light, and colours come from the site swatches. Uses the doc's "osmo"
 // ease from the top of the file.
 function initMainButtonHover() {
-  const DARK  = "var(--swatch--dark-900)";
+  const DARK  = "var(--swatch--dark-800)";
   const LIGHT = "var(--swatch--light-100)";
   const DUR   = 0.5;
 
