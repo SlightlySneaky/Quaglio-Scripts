@@ -78,6 +78,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-slideshow="wrap"]')) initFadeScaleSlideshows();
   if (has('.team-item')) initTeamHover();
   if (has('[project-item]')) initProjectHover();
+  if (has('[main-button]')) initMainButtonHover();
   initNavSectionTriggers(); // recreate section triggers for this page's sections
 
   if (hasLenis) {
@@ -999,6 +1000,62 @@ function initTeamHover() {
 
     item.addEventListener("mouseenter", () => tl.play());
     item.addEventListener("mouseleave", () => tl.reverse());
+  });
+}
+
+// -----------------------------------------
+// MAIN BUTTON HOVER
+// -----------------------------------------
+// Hover a [main-button]: a cluster of coordinated tweens across its parts —
+// [b-bg] wipes in (width 0 → 100%), [b-left] eases down in scale, the [b-right]
+// label recolours dark → light and drifts left, the [b-svg] arrow shoots right,
+// and the [b-inner] chip recolours light and collapses to nothing. Reverses on
+// hover out. Direct tweens (not a paused timeline) so a page full of buttons
+// stays light, and colours come from the site swatches. Uses the doc's "osmo"
+// ease from the top of the file.
+function initMainButtonHover() {
+  const DARK  = "var(--swatch--dark-900)";
+  const LIGHT = "var(--swatch--light-100)";
+  const DUR   = 0.5;
+
+  nextPage.querySelectorAll("[main-button]").forEach((button) => {
+    const left  = button.querySelector("[b-left]");
+    const right = button.querySelector("[b-right]");
+    const bg    = button.querySelector("[b-bg]");
+    const svg   = button.querySelector("[b-svg]");
+    const inner = button.querySelector("[b-inner]");
+
+    const tween = (el, vars) =>
+      el && gsap.to(el, { duration: DUR, ease: "osmo", overwrite: "auto", ...vars });
+    const setNow = (el, vars) => el && gsap.set(el, vars);
+
+    // Initial / hover-out state
+    const reset = () => {
+      tween(bg,    { width: "0%" });
+      tween(left,  { scale: 1 });
+      tween(right, { color: DARK, xPercent: 0 });
+      tween(svg,   { xPercent: 0 });
+      tween(inner, { backgroundColor: DARK, width: "100%", height: "100%" });
+    };
+
+    // Hover-in state
+    const enter = () => {
+      tween(bg,    { width: "100%" });
+      tween(left,  { scale: 0.95 });
+      tween(right, { color: LIGHT, xPercent: -2 });
+      tween(svg,   { xPercent: 200 });
+      tween(inner, { backgroundColor: LIGHT, width: "0%", height: "0%" });
+    };
+
+    // Lock in the initial state without animating on bind.
+    setNow(bg,    { width: "0%" });
+    setNow(left,  { scale: 1 });
+    setNow(right, { color: DARK, xPercent: 0 });
+    setNow(svg,   { xPercent: 0 });
+    setNow(inner, { backgroundColor: DARK, width: "100%", height: "100%" });
+
+    button.addEventListener("mouseenter", enter);
+    button.addEventListener("mouseleave", reset);
   });
 }
 
