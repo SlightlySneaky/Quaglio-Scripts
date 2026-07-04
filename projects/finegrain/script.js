@@ -1016,7 +1016,8 @@ function initTeamHover() {
 function initMainButtonHover() {
   const DARK  = "var(--swatch--dark-800)";
   const LIGHT = "var(--swatch--light-100)";
-  const DUR   = 0.5;
+  const DUR   = 0.6;   // slightly longer for a smoother feel
+  const LEAD  = 0.08;  // head start given to the text before the rest follows
 
   nextPage.querySelectorAll("[main-button]").forEach((button) => {
     const left  = button.querySelector("[b-left]");
@@ -1029,22 +1030,23 @@ function initMainButtonHover() {
       el && gsap.to(el, { duration: DUR, ease: "osmo", overwrite: "auto", ...vars });
     const setNow = (el, vars) => el && gsap.set(el, vars);
 
-    // Initial / hover-out state
+    // Initial / hover-out state. The [b-right] text leads; everything else is
+    // held back by LEAD so the colour swap reads first, then the rest catches up.
     const reset = () => {
-      tween(bg,    { width: "0%" });
-      tween(left,  { scale: 1 });
       tween(right, { color: DARK, xPercent: 0 });
-      tween(svg,   { xPercent: 0 });
-      tween(inner, { backgroundColor: DARK, width: "100%", height: "100%" });
+      tween(bg,    { width: "0%", delay: LEAD });
+      tween(left,  { scale: 1, delay: LEAD });
+      tween(svg,   { xPercent: 0, delay: LEAD });
+      tween(inner, { backgroundColor: DARK, width: "100%", height: "100%", delay: LEAD });
     };
 
     // Hover-in state
     const enter = () => {
-      tween(bg,    { width: "100%" });
-      tween(left,  { scale: 0.95 });
       tween(right, { color: LIGHT, xPercent: -2 });
-      tween(svg,   { xPercent: 200 });
-      tween(inner, { backgroundColor: LIGHT, width: "0%", height: "0%" });
+      tween(bg,    { width: "100%", delay: LEAD });
+      tween(left,  { scale: 0.95, delay: LEAD });
+      tween(svg,   { xPercent: 200, delay: LEAD });
+      tween(inner, { backgroundColor: LIGHT, width: "0%", height: "0%", delay: LEAD });
     };
 
     // Lock in the initial state without animating on bind.
