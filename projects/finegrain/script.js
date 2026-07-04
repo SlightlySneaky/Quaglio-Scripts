@@ -1018,6 +1018,10 @@ function initMainButtonHover() {
   const LIGHT = "var(--swatch--light-100)";
   const DUR   = 0.6;   // slightly longer for a smoother feel
   const LEAD  = 0.08;  // head start given to the text before the rest follows
+  // The [b-bg] wipe travels the full 0 → 100%; "osmo" spikes then brakes hard
+  // near the middle, which reads as a hitch at ~50%. Give the wipe its own
+  // evenly-decelerating ease so it glides the whole way without catching.
+  const EASE_BG = "power2.out";
 
   nextPage.querySelectorAll("[main-button]").forEach((button) => {
     const left  = button.querySelector("[b-left]");
@@ -1034,7 +1038,7 @@ function initMainButtonHover() {
     // held back by LEAD so the colour swap reads first, then the rest catches up.
     const reset = () => {
       tween(right, { color: DARK, xPercent: 0 });
-      tween(bg,    { width: "0%", delay: LEAD });
+      tween(bg,    { width: "0%", delay: LEAD, ease: EASE_BG });
       tween(left,  { scale: 1, delay: LEAD });
       tween(svg,   { xPercent: 0, delay: LEAD });
       tween(inner, { backgroundColor: DARK, width: "100%", height: "100%", delay: LEAD });
@@ -1043,7 +1047,7 @@ function initMainButtonHover() {
     // Hover-in state
     const enter = () => {
       tween(right, { color: LIGHT, xPercent: -2 });
-      tween(bg,    { width: "100%", delay: LEAD });
+      tween(bg,    { width: "100%", delay: LEAD, ease: EASE_BG });
       tween(left,  { scale: 0.95, delay: LEAD });
       tween(svg,   { xPercent: 200, delay: LEAD });
       tween(inner, { backgroundColor: LIGHT, width: "0%", height: "0%", delay: LEAD });
