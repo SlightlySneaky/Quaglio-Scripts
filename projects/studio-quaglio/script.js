@@ -9,7 +9,6 @@ history.scrollRestoration = "manual";
 let lenis = null;
 let nextPage = document;
 let onceFunctionsInitialized = false;
-let colorflowPreloadIframe = null;
 
 // First-load entrance coordination. The preloader masks the page while
 // runPageOnceAnimation preps the [data-load] reveal. The reveal fires when BOTH
@@ -83,19 +82,10 @@ function initOnceFunctions() {
 
   // Runs once on first load
   if (has('[data-button-animate-chars]'))   initButtonCharacterStagger();
-  initColorflowPrewarm(); // hover-prewarm colorflow before navigation (binds once)
 }
 
 function initBeforeEnterFunctions(next) {
   nextPage = next || document;
-
-  // Hide colorflow iframe during transition so it loads invisibly in the background
-  const colorflowIframe = nextPage.querySelector('iframe[src*="colorflow"]');
-  if (colorflowIframe) {
-    colorflowIframe.style.transition = 'none';
-    colorflowIframe.style.opacity = '0';
-    tuneColorflowPerf(colorflowIframe);
-  }
 }
 
 function initAfterEnterFunctions(next) {
@@ -126,16 +116,6 @@ function initAfterEnterFunctions(next) {
   if (has('[data-draggable-marquee-init]'))       safe("marquee", initDraggableMarquee);
   if (has('[data-cal-inline]'))                   safe("cal", () => initCalEmbeds(nextPage));
   if (has('[data-scroll-next-wrap]'))             safe("scrollNext", initScrollToNextPage);
-
-  // Downscale + layer-promote the colorflow WebGL bg on big screens (first load
-  // reaches here via barba `once`; beforeEnter handles later navigations).
-  const cfIframe = nextPage.querySelector('iframe[src*="colorflow"]');
-  if (cfIframe) safe("colorflowPerf", () => tuneColorflowPerf(cfIframe));
-
-
-  // Colorflow is faded in by the page-enter animations (runPageOnceAnimation on
-  // first load, runPageLeaveAnimation on navigation), not here — so it animates
-  // from 0 opacity during the transition instead of popping in afterward.
 
   if(hasLenis){
     lenis.resize();
@@ -280,11 +260,6 @@ function runPageOnceAnimation(next) {
   // entrance the page plays on navigation, now timed to the loader.
   onceRevealFn = () => {
     const tl = gsap.timeline();
-
-    // Colorflow background is held at opacity 0 during init — fade it in now.
-    const colorflow = next.querySelector('iframe[src*="colorflow"]');
-    if (colorflow) tl.fromTo(colorflow, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "osmo" }, 0);
-
     tl.add(buildLoadAnimationsTimeline(next), 0);
   };
 
@@ -321,14 +296,9 @@ function runPageLeaveAnimation(current, next) {
 function runPageEnterAnimation(next){
   const tl = gsap.timeline();
 
-  // Colorflow background is held at opacity 0 by initBeforeEnterFunctions — fade
-  // it back in as the new page arrives.
-  const colorflow = next.querySelector('iframe[src*="colorflow"]');
-
   if (reducedMotion) {
     // Immediate swap behavior if user prefers reduced motion
     tl.set(next, { autoAlpha: 1 });
-    if (colorflow) gsap.set(colorflow, { opacity: 1 });
     // Skips the reveal timeline, so clear the CSS [data-load] opacity:0 directly.
     gsap.set(next.querySelectorAll("[data-load]"), { autoAlpha: 1 });
     tl.add("pageReady");
@@ -350,8 +320,6 @@ function runPageEnterAnimation(next){
   // runLoadAnimations() reveal below (on first load via runPageOnceAnimation,
   // on nav via the .call here). A separate h1 tween here would race that reveal.
 
-  if (colorflow) tl.fromTo(colorflow, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "osmo" }, "startEnter");
-
   // Kick off the [data-load] reveal independently (a .call, not added to the
   // timeline) so it can finish without delaying pageReady — same as before.
   tl.call(() => runLoadAnimations(next), null, "startEnter");
@@ -368,20 +336,6 @@ function runPageEnterAnimation(next){
 // -----------------------------------------
 // BARBA HOOKS + INIT
 // -----------------------------------------
-
-barba.hooks.before(data => {
-  // Fallback preload at transition start, in case a hover didn't prewarm it first
-  // (e.g. keyboard nav, or a click without a preceding hover). initColorflowPrewarm
-  // sets colorflowPreloadIframe earlier on intent — skip if it's already warming.
-  if (colorflowPreloadIframe) return;
-
-  // opacity:0 (not display:none) lets the GPU actually create the WebGL context.
-  const parser = new DOMParser();
-  const nextDoc = parser.parseFromString(data.next.html, 'text/html');
-  const nextColorflow = nextDoc.querySelector('iframe[src*="colorflow"]');
-
-  if (nextColorflow) colorflowPreloadIframe = warmColorflow(nextColorflow.src);
-});
 
 barba.hooks.beforeEnter(data => {
   // Position new container on top
@@ -411,12 +365,6 @@ barba.hooks.enter(data => {
 })
 
 barba.hooks.afterEnter(data => {
-  // Remove the preload iframe now that the real colorflow in the new container is live
-  if (colorflowPreloadIframe) {
-    colorflowPreloadIframe.remove();
-    colorflowPreloadIframe = null;
-  }
-
   // Run page functions
   initAfterEnterFunctions(data.next.container);
 
@@ -567,89 +515,6 @@ function initBarbaNavUpdate(data) {
     var newClassList = next.getAttribute('class') || '';
     curr.setAttribute('class', newClassList);
   });
-}
-
-// Create a hidden, full-screen iframe pointing at a colorflow URL so the browser
-// loads its bundle and the GPU builds the WebGL context ahead of time. opacity:0
-// (not display:none) is required — display:none won't initialise WebGL. Returns
-// the iframe so callers can track/remove it (afterEnter cleans up the active one).
-function warmColorflow(src) {
-  if (!src) return null;
-  const iframe = document.createElement('iframe');
-  iframe.src = src;
-  iframe.setAttribute('aria-hidden', 'true');
-  Object.assign(iframe.style, {
-    position: 'fixed',
-    inset: '0',
-    width: '100%',
-    height: '100%',
-    opacity: '0',
-    pointerEvents: 'none',
-    zIndex: '-1',
-  });
-  document.body.appendChild(iframe);
-  return iframe;
-}
-
-// Colorflow is a fullscreen three.js/WebGL scene rendered by a fixed iframe. The
-// scroll jank leaving the hero comes from the compositor re-painting that fixed
-// WebGL surface every frame as the page content scrolls over it. Promoting it to
-// its own GPU layer lets the browser just slide the other layers over it — cheap.
-//
-// We deliberately do NOT resize/transform the iframe to lower its render
-// resolution: Webflow/GSAP write their own `transform` on this element (hero
-// parallax + the opacity fade), and any scale() we set gets overwritten, leaving
-// the scene shrunk in the top-left. `will-change: transform` only HINTS a layer —
-// it sets no transform value, so it never collides with those animations.
-function tuneColorflowPerf(iframe) {
-  if (!iframe || iframe.__cfTuned) return;
-  iframe.__cfTuned = true;
-
-  iframe.style.willChange = 'transform';
-  iframe.style.isolation = 'isolate';
-}
-
-// Prewarm the colorflow BEFORE the page change: as soon as the user hovers (or
-// touches) an internal link, fetch that page's HTML and, if it contains a
-// colorflow iframe (e.g. the home page), start warming it — so by the time they
-// click and land, its WebGL is already initialising. The barba `before` hook is
-// the fallback for when there's no hover. Bound once on the document.
-function initColorflowPrewarm() {
-  if (window.__cfPrewarmBound) return;
-  window.__cfPrewarmBound = true;
-
-  const htmlCache = new Map(); // url -> Promise<string|null>, deduped per URL
-  const fetchHtml = (url) => {
-    if (!htmlCache.has(url)) {
-      htmlCache.set(url, fetch(url, { credentials: 'same-origin' })
-        .then((r) => (r.ok ? r.text() : null))
-        .catch(() => null));
-    }
-    return htmlCache.get(url);
-  };
-
-  const onIntent = async (e) => {
-    if (colorflowPreloadIframe) return; // already warming one — don't stack
-    const a = e.target.closest && e.target.closest('a[href]');
-    if (!a) return;
-
-    const href = a.getAttribute('href');
-    if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
-
-    let url;
-    try { url = new URL(href, location.href); } catch { return; }
-    if (url.origin !== location.origin) return;        // same-origin only
-    if (url.pathname === location.pathname) return;     // not the current page
-
-    const html = await fetchHtml(url.href);
-    if (!html || colorflowPreloadIframe) return;        // re-check: a click may have warmed it
-
-    const match = html.match(/<iframe[^>]+src=["']([^"']*colorflow[^"']*)["']/i);
-    if (match) colorflowPreloadIframe = warmColorflow(match[1]);
-  };
-
-  document.addEventListener('pointerover', onIntent, { passive: true });
-  document.addEventListener('touchstart', onIntent, { passive: true });
 }
 
 
