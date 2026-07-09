@@ -94,6 +94,7 @@ function initBeforeEnterFunctions(next) {
   if (colorflowIframe) {
     colorflowIframe.style.transition = 'none';
     colorflowIframe.style.opacity = '0';
+    tuneColorflowPerf(colorflowIframe);
   }
 }
 
@@ -125,6 +126,11 @@ function initAfterEnterFunctions(next) {
   if (has('[data-draggable-marquee-init]'))       safe("marquee", initDraggableMarquee);
   if (has('[data-cal-inline]'))                   safe("cal", () => initCalEmbeds(nextPage));
   if (has('[data-scroll-next-wrap]'))             safe("scrollNext", initScrollToNextPage);
+
+  // Downscale + layer-promote the colorflow WebGL bg on big screens (first load
+  // reaches here via barba `once`; beforeEnter handles later navigations).
+  const cfIframe = nextPage.querySelector('iframe[src*="colorflow"]');
+  if (cfIframe) safe("colorflowPerf", () => tuneColorflowPerf(cfIframe));
 
 
   // Colorflow is faded in by the page-enter animations (runPageOnceAnimation on
@@ -583,6 +589,54 @@ function warmColorflow(src) {
   });
   document.body.appendChild(iframe);
   return iframe;
+}
+
+// Colorflow is a fullscreen three.js/WebGL scene that re-renders every frame at
+// the iframe box size × devicePixelRatio (antialias on). On large monitors (e.g.
+// 2400px) that's millions of shaded pixels per frame, which shows up as scroll
+// jank the moment you leave the hero. The scene is a soft gradient, so we render
+// it at a fraction of the resolution and upscale with a transform — visually
+// identical, big cut in GPU load. The embed has a ResizeObserver, so shrinking
+// the box makes it re-render smaller on its own. We also promote it to its own
+// compositor layer so scrolling content above it never repaints the WebGL surface.
+function tuneColorflowPerf(iframe) {
+  if (!iframe || iframe.__cfTuned) return;
+  iframe.__cfTuned = true;
+
+  const apply = () => {
+    const w = window.innerWidth;
+    // Render scale: full res on normal screens, progressively downscaled on big ones.
+    const scale = w >= 2200 ? 0.5 : w >= 1600 ? 0.6 : 1;
+
+    if (scale < 1) {
+      // Only take over transform if nothing else (Webflow/GSAP) is driving it —
+      // otherwise leave layout alone and just promote the layer below.
+      const existing = getComputedStyle(iframe).transform;
+      if (existing === 'none') {
+        iframe.style.transformOrigin = 'top left';
+        iframe.style.transform = `scale(${1 / scale})`;
+        iframe.style.width = `${scale * 100}%`;
+        iframe.style.height = `${scale * 100}%`;
+      }
+    } else {
+      iframe.style.transform = '';
+      iframe.style.transformOrigin = '';
+      iframe.style.width = '';
+      iframe.style.height = '';
+    }
+
+    // Own GPU layer + isolation: scroll composites other layers over it cheaply.
+    iframe.style.willChange = 'transform';
+    iframe.style.isolation = 'isolate';
+    iframe.style.contain = 'layout paint';
+  };
+
+  apply();
+  let t;
+  window.addEventListener('resize', () => {
+    clearTimeout(t);
+    t = setTimeout(apply, 200);
+  }, { passive: true });
 }
 
 // Prewarm the colorflow BEFORE the page change: as soon as the user hovers (or
